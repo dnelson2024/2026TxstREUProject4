@@ -1,14 +1,34 @@
-# 2026TxstREUProject4
 
-Project Activity 4 – Using AI and IoT to Build Smart Homes for Individuals with Autism Spectrum Disorder  (led by Dr. Liu & Dr. Carvalho)
 
-Autism Spectrum Disorder (ASD) is a neurodevelopmental disorder characterized by difficulties in social interaction, communication, and repetitive behaviors. Individuals with ASD often face challenges in adapting to their living environment, including problems managing sensory stimuli and maintaining routines. The project aims to develop IoT and AI-driven smart home systems for individuals with ASD. These smart home systems will utilize advanced IoT and AI algorithms to create personalized environments that optimize comfort, safety, health, and well-being for individuals with ASD.
+SHARP ReadMe 
 
-Machine learning models will analyze channel state information (CSI) data obtained from human experiments with the ESP32 microcontrollers to classify which movements are associated with ASD. 
+Algorithms for human activity recognition with a commercial IEEE 802.11ac router @ 5 GHz, 80 MHz of bandwidth.
 
-<<<<<<< HEAD
-This is the Zotero associated with this reasearch project: https://www.zotero.org/groups/6584451/txst-reu-project-/items/GRR6VSXJ/item-list.
-=======
+
+This repository contains the reference code for the article [''SHARP: Environment and Person Independent Activity Recognition with Commodity IEEE 802.11 Access Points''](https://ieeexplore.ieee.org/document/9804861).
+
+
+If you find the project useful and you use this code, please cite our article:
+```
+@article{meneghello2022sharp,
+ author={Meneghello, Francesca and Garlisi, Domenico and Dal Fabbro, Nicol\o' and Tinnirello, Ilenia and Rossi, Michele},
+ journal={IEEE Transactions on Mobile Computing},
+ title={{SHARP: Environment and Person Independent Activity Recognition with Commodity IEEE 802.11 Access Points}},
+ year={2023},
+ volume={22},
+ number={10},
+ pages={6160-6175}
+ }
+```
+
+
+## How to use
+Clone the repository and enter the folder with the python code:
+```bash
+cd <your_path>
+git clone https://github.com/francescamen/SHARP
+```
+
 Download the input data from http://researchdata.cab.unipd.it/id/eprint/624 and unzip the file.
 For your convenience, you can use the ```input_files``` inside this project folder to place the files but the scripts work whatever is the source folder.
 
@@ -23,7 +43,7 @@ The code for SHARP is implemented in Python and can be found in the ```Python_co
 ### Phase sanitization
 The following three scripts encode the phase sanitization algorithm detailed in Section 3.1 of the referred article.
 ```bash
-python CSI_phase_sanitization_signal_preprocessing.py <'directory of the input data'> <'process all the files in subdirectories (1) or not (0)'> <'name of the file to process (only if 0 in the previous field)'> <'number of spatial streams'> <'number of cores'> <'index where to start the processing for each stream'> 
+python CSI_phase_sanitization_signal_preprocessing.py <'directory of the input data'> <'process all the files in subdirectories (1) or not (0)'> <'name of the file to process (only if 0 in the previous field)'> <'number of spatial streams'> <'number of cores'> <'index wherae to start the processing for each stream'> 
 ```
 e.g., python CSI_phase_sanitization_signal_preprocessing.py ../input_files/S1a/ 1 - 1 4 0
 
