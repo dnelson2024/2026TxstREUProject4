@@ -19,7 +19,7 @@ import numpy as np
 import pickle
 from sklearn.metrics import confusion_matrix
 import os
-from SHARP_Modified.Python_code.dataset_utility import create_dataset_single, expand_antennas
+from SHARP_Modified.Python_code.dataset_utility import create_dataset_single, expand_antennas, load_data_single
 from tensorflow.keras.models import load_model
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 import tensorflow as tf
@@ -35,6 +35,8 @@ if __name__ == '__main__':
     parser.add_argument('num_tot', help='Number of antenna * number of spatial streams', type=int)
     parser.add_argument('name_base', help='Name base for the files')
     parser.add_argument('activities', help='Activities to be considered')
+    parser.add_argument('--model', help='Model architecture to load (must match training)', default='cnn',
+                        choices=['cnn', 'cnn_bilstm', 'vit', 'bilstm', 'lstm', 'rcnn', 'random_forest'])
     parser.add_argument('--bandwidth', help='Bandwidth in [MHz] to select the subcarriers, can be 20, 40, 80 '
                                             '(default 80)', default=80, required=False, type=int)
     parser.add_argument('--sub_band', help='Sub_band idx in [1, 2, 3, 4] for 20 MHz, [1, 2] for 40 MHz '
@@ -96,17 +98,24 @@ if __name__ == '__main__':
                                                  stream_ant_complete, input_network, batch_size, shuffle=False,
                                                  cache_file=name_base + '_' + str(csi_act) + '_cache_complete')
 
-    name_model = name_base + '_' + str(csi_act) + '_network.h5'
-    csi_model = load_model(name_model)
-
     num_samples_complete = len(file_complete_selected_expanded)
-    lab_complete, count_complete = np.unique(labels_complete_selected_expanded, return_counts=True)
     complete_steps_per_epoch = int(np.ceil(num_samples_complete / batch_size))
-
-    # complete
     complete_labels_true = np.array(labels_complete_selected_expanded)
-    complete_prediction_list = csi_model.predict(dataset_csi_complete,
-                                                 steps=complete_steps_per_epoch)[:complete_labels_true.shape[0]]
+
+    # ---- Load the chosen trained model and score every single-antenna sample ----
+    if args.model == 'random_forest':
+        import joblib
+        clf = joblib.load(name_base + '_' + str(csi_act) + '_random_forest.joblib')
+        x_complete_rf = np.stack([np.asarray(load_data_single(f, s)).ravel()
+                                  for f, s in zip(file_complete_selected_expanded, stream_ant_complete)])
+        proba = clf.predict_proba(x_complete_rf)
+        complete_prediction_list = np.zeros((x_complete_rf.shape[0], output_shape), dtype=float)
+        complete_prediction_list[:, clf.classes_.astype(int)] = proba
+    else:
+        name_model = name_base + '_' + str(csi_act) + '_' + args.model + '_network.h5'
+        csi_model = load_model(name_model)
+        complete_prediction_list = csi_model.predict(dataset_csi_complete,
+                                                     steps=complete_steps_per_epoch)[:num_samples_complete]
 
     complete_labels_pred = np.argmax(complete_prediction_list, axis=1)
 
@@ -155,8 +164,9 @@ if __name__ == '__main__':
                            'recall_max_merge': recall_max_merge,
                            'fscore_max_merge': fscore_max_merge}
 
-    name_file = './outputs/complete_different_' + str(csi_act) + '_' + subdirs_complete + '_band_' + str(bandwidth) \
-                + '_subband_' + str(sub_band) + suffix
+    os.makedirs('./outputs', exist_ok=True)
+    name_file = './outputs/complete_different_' + str(csi_act) + '_' + subdirs_complete + '_' + args.model + \
+                '_band_' + str(bandwidth) + '_subband_' + str(sub_band) + suffix
     with open(name_file, "wb") as fp:  # Pickling
         pickle.dump(metrics_matrix_dict, fp)
     print('accuracy', accuracy_max_merge)
@@ -214,6 +224,6 @@ if __name__ == '__main__':
                            'average_fscore_change_num_ant': average_fscore_change_num_ant}
 
     name_file = './outputs/change_number_antennas_complete_different_' + str(csi_act) + '_' + subdirs_complete + \
-                '_band_' + str(bandwidth) + '_subband_' + str(sub_band) + '.txt'
+                '_' + args.model + '_band_' + str(bandwidth) + '_subband_' + str(sub_band) + '.txt'
     with open(name_file, "wb") as fp:  # Pickling
         pickle.dump(metrics_matrix_dict, fp)

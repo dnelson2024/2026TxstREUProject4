@@ -51,11 +51,13 @@ if __name__ == '__main__':
     average_f = np.mean(recall)
     print('single antenna - average accuracy %f, average precision %f, average recall %f, average fscore %f'
           % (accuracy, average_prec, average_rec, average_f))
-    print('fscores - empty %f, sitting %f, walking %f, running %f, jumping %f'
-          % (fscore[0], fscore[1], fscore[2], fscore[3], fscore[4]))
+    print('per-activity fscores (single antenna):')
+    for i_act in range(len(activities)):
+        print('  %s: %f' % (activities[i_act], fscore[i_act]))
     print('average fscore %f' % (np.mean(fscore)))
-    print('accuracies - empty %f, sitting %f, walking %f, running %f, jumping %f'
-          % (accuracies[0], accuracies[1], accuracies[2], accuracies[3], accuracies[4]))
+    print('per-activity accuracies (single antenna):')
+    for i_act in range(len(activities)):
+        print('  %s: %f' % (activities[i_act], accuracies[i_act]))
 
     conf_matrix_max_merge = conf_matrix_dict['conf_matrix_max_merge']
     conf_matrix_max_merge_normaliz_row = np.transpose(conf_matrix_max_merge /
@@ -71,11 +73,12 @@ if __name__ == '__main__':
     print('\n-- FINAL DECISION --')
     print('max-merge - average accuracy %f, average precision %f, average recall %f, average fscore %f'
           % (accuracy_max_merge, average_max_merge_prec, average_max_merge_rec, average_max_merge_f))
-    print('fscores - empty %f, sitting %f, walking %f, running %f, jumping %f'
-          % (fscore_max_merge[0], fscore_max_merge[1], fscore_max_merge[2], fscore_max_merge[3], fscore_max_merge[4]))
-    print('accuracies - empty %f, sitting %f, walking %f, running %f, jumping %f'
-          % (accuracies_max_merge[0], accuracies_max_merge[1], accuracies_max_merge[2], accuracies_max_merge[3],
-             accuracies_max_merge[4]))
+    print('per-activity fscores (max-merge):')
+    for i_act in range(len(activities)):
+        print('  %s: %f' % (activities[i_act], fscore_max_merge[i_act]))
+    print('per-activity accuracies (max-merge):')
+    for i_act in range(len(activities)):
+        print('  %s: %f' % (activities[i_act], accuracies_max_merge[i_act]))
 
     # performance assessment by changing the number of monitor antennas
     name_file = folder_name + 'change_number_antennas_' + args.name_file + '.txt'

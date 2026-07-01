@@ -19,9 +19,10 @@ import numpy as np
 import pickle
 from sklearn.metrics import confusion_matrix
 import os
-from SHARP_Modified.Python_code.dataset_utility import create_dataset_single, expand_antennas
+from SHARP_Modified.Python_code.dataset_utility import create_dataset_single, expand_antennas, load_data_single
 from SHARP_Modified.Python_code.network_utility import *
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+from sklearn.ensemble import RandomForestClassifier
 
 
 if __name__ == '__main__':
@@ -35,6 +36,8 @@ if __name__ == '__main__':
     parser.add_argument('num_tot', help='Number of antenna * number of spatial streams', type=int)
     parser.add_argument('name_base', help='Name base for the files')
     parser.add_argument('activities', help='Activities to be considered')
+    parser.add_argument('--model', help='Model architecture to train (default cnn)', default='cnn',
+                        choices=['cnn', 'cnn_bilstm', 'vit', 'bilstm', 'lstm', 'rcnn', 'random_forest'])
     parser.add_argument('--bandwidth', help='Bandwidth in [MHz] to select the subcarriers, can be 20, 40, 80 '
                                             '(default 80)', default=80, required=False, type=int)
     parser.add_argument('--sub_band', help='Sub_band idx in [1, 2, 3, 4] for 20 MHz, [1, 2] for 40 MHz '
@@ -152,68 +155,83 @@ if __name__ == '__main__':
                                              stream_ant_test, input_network, batch_size,
                                              shuffle=False, cache_file=name_cache_test)
 
-    csi_model = csi_network_inc_res(input_network, output_shape)
-    csi_model.summary()
-
-    optimiz = tf.keras.optimizers.Adam(learning_rate=0.0001)
-
-    loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits='True')
-    csi_model.compile(optimizer=optimiz, loss=loss, metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-
     num_samples_train = len(file_train_selected_expanded)
     num_samples_val = len(file_val_selected_expanded)
     num_samples_test = len(file_test_selected_expanded)
-    lab, count = np.unique(labels_train_selected_expanded, return_counts=True)
-    lab_val, count_val = np.unique(labels_val_selected_expanded, return_counts=True)
-    lab_test, count_test = np.unique(labels_test_selected_expanded, return_counts=True)
-    train_steps_per_epoch = int(np.ceil(num_samples_train/batch_size))
-    val_steps_per_epoch = int(np.ceil(num_samples_val/batch_size))
-    test_steps_per_epoch = int(np.ceil(num_samples_test/batch_size))
+    train_steps_per_epoch = int(np.ceil(num_samples_train / batch_size))
+    val_steps_per_epoch = int(np.ceil(num_samples_val / batch_size))
+    test_steps_per_epoch = int(np.ceil(num_samples_test / batch_size))
 
-    callback_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
+    # ---- Build & train the chosen model; produce per-(single-antenna)-sample scores ----
+    if args.model == 'random_forest':
+        # sklearn path: flatten each single-antenna Doppler sample into a vector.
+        def _materialize(files_exp, streams):
+            return np.stack([np.asarray(load_data_single(f, s)).ravel()
+                             for f, s in zip(files_exp, streams)])
 
-    name_model = name_base + '_' + str(csi_act) + '_network.h5'
-    callback_save = tf.keras.callbacks.ModelCheckpoint(name_model, save_freq='epoch', save_best_only=True,
-                                                       monitor='val_sparse_categorical_accuracy')
+        x_train_rf = _materialize(file_train_selected_expanded, stream_ant_train)
+        x_val_rf = _materialize(file_val_selected_expanded, stream_ant_val)
+        x_test_rf = _materialize(file_test_selected_expanded, stream_ant_test)
 
-    results = csi_model.fit(dataset_csi_train, epochs=25, steps_per_epoch=train_steps_per_epoch,
-                            validation_data=dataset_csi_val, validation_steps=val_steps_per_epoch,
-                            callbacks=[callback_save, callback_stop])
+        clf = RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=42)
+        clf.fit(x_train_rf, np.array(labels_train_selected_expanded))
 
-    csi_model.save(name_model)
+        def _proba_full(x_mat):
+            # Map predict_proba columns (clf.classes_) onto the full class range so
+            # the downstream argmax / antenna-merge sees an [N, output_shape] matrix.
+            p = clf.predict_proba(x_mat)
+            full = np.zeros((x_mat.shape[0], output_shape), dtype=float)
+            full[:, clf.classes_.astype(int)] = p
+            return full
 
-    csi_model = tf.keras.models.load_model(name_model)
+        train_prediction_list = _proba_full(x_train_rf)
+        val_prediction_list = _proba_full(x_val_rf)
+        test_prediction_list = _proba_full(x_test_rf)
 
-    # train
+        import joblib
+        joblib.dump(clf, name_base + '_' + str(csi_act) + '_random_forest.joblib')
+    else:
+        csi_model = build_model(args.model, input_network, output_shape)
+        csi_model.summary()
+
+        optimiz = tf.keras.optimizers.Adam(learning_rate=0.0001)
+        loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        csi_model.compile(optimizer=optimiz, loss=loss,
+                          metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+
+        callback_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
+        name_model = name_base + '_' + str(csi_act) + '_' + args.model + '_network.h5'
+        callback_save = tf.keras.callbacks.ModelCheckpoint(name_model, save_freq='epoch', save_best_only=True,
+                                                           monitor='val_sparse_categorical_accuracy')
+
+        csi_model.fit(dataset_csi_train, epochs=25, steps_per_epoch=train_steps_per_epoch,
+                      validation_data=dataset_csi_val, validation_steps=val_steps_per_epoch,
+                      callbacks=[callback_save, callback_stop])
+        csi_model.save(name_model)
+        csi_model = tf.keras.models.load_model(name_model)
+
+        name_cache_train_test = name_base + '_' + str(csi_act) + '_cache_train_test'
+        dataset_csi_train_test = create_dataset_single(file_train_selected_expanded, labels_train_selected_expanded,
+                                                       stream_ant_train, input_network, batch_size,
+                                                       shuffle=False, cache_file=name_cache_train_test, prefetch=False)
+        train_prediction_list = csi_model.predict(dataset_csi_train_test,
+                                                  steps=train_steps_per_epoch)[:num_samples_train]
+        val_prediction_list = csi_model.predict(dataset_csi_val,
+                                                steps=val_steps_per_epoch)[:num_samples_val]
+        test_prediction_list = csi_model.predict(dataset_csi_test,
+                                                 steps=test_steps_per_epoch)[:num_samples_test]
+
+    # ---- Shared evaluation (identical for every model) ----
     train_labels_true = np.array(labels_train_selected_expanded)
-
-    name_cache_train_test = name_base + '_' + str(csi_act) + '_cache_train_test'
-    dataset_csi_train_test = create_dataset_single(file_train_selected_expanded, labels_train_selected_expanded,
-                                                   stream_ant_train, input_network, batch_size,
-                                                   shuffle=False, cache_file=name_cache_train_test, prefetch=False)
-    train_prediction_list = csi_model.predict(dataset_csi_train_test,
-                                              steps=train_steps_per_epoch)[:train_labels_true.shape[0]]
-
     train_labels_pred = np.argmax(train_prediction_list, axis=1)
-
     conf_matrix_train = confusion_matrix(train_labels_true, train_labels_pred)
 
-    # val
     val_labels_true = np.array(labels_val_selected_expanded)
-    val_prediction_list = csi_model.predict(dataset_csi_val, steps=val_steps_per_epoch)[:val_labels_true.shape[0]]
-
     val_labels_pred = np.argmax(val_prediction_list, axis=1)
-
     conf_matrix_val = confusion_matrix(val_labels_true, val_labels_pred)
 
-    # test
     test_labels_true = np.array(labels_test_selected_expanded)
-
-    test_prediction_list = csi_model.predict(dataset_csi_test, steps=test_steps_per_epoch)[
-                            :test_labels_true.shape[0]]
-
     test_labels_pred = np.argmax(test_prediction_list, axis=1)
-
     conf_matrix = confusion_matrix(test_labels_true, test_labels_pred)
     precision, recall, fscore, _ = precision_recall_fscore_support(test_labels_true,
                                                                    test_labels_pred,
@@ -258,8 +276,9 @@ if __name__ == '__main__':
                            'recall_max_merge': recall_max_merge,
                            'fscore_max_merge': fscore_max_merge}
 
-    name_file = './outputs/test_' + str(csi_act) + '_' + subdirs_training + '_band_' + str(bandwidth) + '_subband_' + \
-                str(sub_band) + suffix
+    os.makedirs('./outputs', exist_ok=True)
+    name_file = './outputs/test_' + str(csi_act) + '_' + subdirs_training + '_' + args.model + '_band_' + \
+                str(bandwidth) + '_subband_' + str(sub_band) + suffix
     with open(name_file, "wb") as fp:  # Pickling
         pickle.dump(metrics_matrix_dict, fp)
 
@@ -313,7 +332,7 @@ if __name__ == '__main__':
     metrics_matrix_dict = {'average_accuracy_change_num_ant': average_accuracy_change_num_ant,
                            'average_fscore_change_num_ant': average_fscore_change_num_ant}
 
-    name_file = './outputs/change_number_antennas_test_' + str(csi_act) + '_' + subdirs_training + '_band_' + \
-                str(bandwidth) + '_subband_' + str(sub_band) + '.txt'
+    name_file = './outputs/change_number_antennas_test_' + str(csi_act) + '_' + subdirs_training + '_' + \
+                args.model + '_band_' + str(bandwidth) + '_subband_' + str(sub_band) + '.txt'
     with open(name_file, "wb") as fp:  # Pickling
         pickle.dump(metrics_matrix_dict, fp)

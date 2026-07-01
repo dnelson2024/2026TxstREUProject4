@@ -52,3 +52,133 @@ def csi_network_inc_res(input_sh, output_sh):
     x = tf.keras.layers.Dense(output_sh, activation=None, name='dense2')(x)
     model = tf.keras.Model(inputs=x_input, outputs=x, name='csi_model')
     return model
+
+
+# ============================================================================
+# Additional architectures. Every builder takes:
+#     input_sh  = (sample_length, feature_length, channels)  # time x velocity x C
+#     output_sh = number of activity classes
+# and returns a Keras model whose LAST layer outputs raw LOGITS (no softmax), to
+# stay compatible with SparseCategoricalCrossentropy(from_logits=True) and the
+# argmax-based evaluation in CSI_network.py.
+# ============================================================================
+
+
+class _AddPositionEmbedding(tf.keras.layers.Layer):
+    """Learned positional embedding added to a (batch, n_patches, dim) tensor."""
+    def __init__(self, n_patches, dim, **kwargs):
+        super().__init__(**kwargs)
+        self.n_patches = n_patches
+        self.pos = tf.keras.layers.Embedding(input_dim=n_patches, output_dim=dim)
+
+    def call(self, x):
+        positions = tf.range(start=0, limit=self.n_patches, delta=1)
+        return x + self.pos(positions)
+
+
+def _to_time_sequence(x_in):
+    """(T, F, C) -> (T, F*C): one feature vector per time step for RNNs."""
+    t = x_in.shape[1]
+    return tf.keras.layers.Reshape((t, -1))(x_in)
+
+
+def build_cnn(input_sh, output_sh):
+    # The original SHARP Inception-ResNet CNN (kept as the default 'cnn').
+    return csi_network_inc_res(input_sh, output_sh)
+
+
+def build_lstm(input_sh, output_sh):
+    x_in = tf.keras.Input(input_sh)
+    x = _to_time_sequence(x_in)
+    x = tf.keras.layers.LSTM(64, return_sequences=True)(x)
+    x = tf.keras.layers.LSTM(64)(x)
+    x = tf.keras.layers.Dropout(0.3)(x)
+    x = tf.keras.layers.Dense(output_sh, activation=None)(x)
+    return tf.keras.Model(x_in, x, name='lstm')
+
+
+def build_bilstm(input_sh, output_sh):
+    x_in = tf.keras.Input(input_sh)
+    x = _to_time_sequence(x_in)
+    x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True))(x)
+    x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64))(x)
+    x = tf.keras.layers.Dropout(0.3)(x)
+    x = tf.keras.layers.Dense(output_sh, activation=None)(x)
+    return tf.keras.Model(x_in, x, name='bilstm')
+
+
+def _conv_front_end(x_in):
+    """Conv feature extractor that POOLS ONLY the feature axis, keeping the time
+    axis intact so it can feed a recurrent layer as a per-timestep sequence."""
+    x = tf.keras.layers.Conv2D(16, (3, 3), padding='same', activation='relu')(x_in)
+    x = tf.keras.layers.MaxPool2D((1, 2))(x)
+    x = tf.keras.layers.Conv2D(32, (3, 3), padding='same', activation='relu')(x)
+    x = tf.keras.layers.MaxPool2D((1, 2))(x)
+    # (T, F', 32) -> (T, F'*32)
+    t, f, c = x.shape[1], x.shape[2], x.shape[3]
+    x = tf.keras.layers.Reshape((t, f * c))(x)
+    return x
+
+
+def build_cnn_bilstm(input_sh, output_sh):
+    x_in = tf.keras.Input(input_sh)
+    x = _conv_front_end(x_in)
+    x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True))(x)
+    x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64))(x)
+    x = tf.keras.layers.Dropout(0.3)(x)
+    x = tf.keras.layers.Dense(output_sh, activation=None)(x)
+    return tf.keras.Model(x_in, x, name='cnn_bilstm')
+
+
+def build_rcnn(input_sh, output_sh):
+    # Recurrent-CNN (CRNN): conv feature extractor + UNIdirectional LSTM.
+    x_in = tf.keras.Input(input_sh)
+    x = _conv_front_end(x_in)
+    x = tf.keras.layers.LSTM(64, return_sequences=True)(x)
+    x = tf.keras.layers.LSTM(64)(x)
+    x = tf.keras.layers.Dropout(0.3)(x)
+    x = tf.keras.layers.Dense(output_sh, activation=None)(x)
+    return tf.keras.Model(x_in, x, name='rcnn')
+
+
+def build_vit(input_sh, output_sh, patch=(10, 10), dim=64, depth=4, heads=4, mlp_dim=128):
+    x_in = tf.keras.Input(input_sh)
+    # Patch embedding via a strided conv (valid padding floors non-divisible dims).
+    ph = min(patch[0], input_sh[0])
+    pw = min(patch[1], input_sh[1])
+    x = tf.keras.layers.Conv2D(dim, (ph, pw), strides=(ph, pw), padding='valid')(x_in)
+    n_patches = x.shape[1] * x.shape[2]
+    x = tf.keras.layers.Reshape((n_patches, dim))(x)
+    x = _AddPositionEmbedding(n_patches, dim)(x)
+    for _ in range(depth):
+        y = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
+        y = tf.keras.layers.MultiHeadAttention(num_heads=heads, key_dim=dim // heads)(y, y)
+        x = tf.keras.layers.Add()([x, y])
+        y = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
+        y = tf.keras.layers.Dense(mlp_dim, activation='gelu')(y)
+        y = tf.keras.layers.Dense(dim)(y)
+        x = tf.keras.layers.Add()([x, y])
+    x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
+    x = tf.keras.layers.GlobalAveragePooling1D()(x)
+    x = tf.keras.layers.Dropout(0.3)(x)
+    x = tf.keras.layers.Dense(output_sh, activation=None)(x)
+    return tf.keras.Model(x_in, x, name='vit')
+
+
+# Keras builders keyed by --model value. 'random_forest' is handled separately
+# in CSI_network.py (sklearn, not a Keras model).
+KERAS_MODEL_BUILDERS = {
+    'cnn': build_cnn,
+    'cnn_bilstm': build_cnn_bilstm,
+    'vit': build_vit,
+    'bilstm': build_bilstm,
+    'lstm': build_lstm,
+    'rcnn': build_rcnn,
+}
+
+
+def build_model(model_name, input_sh, output_sh):
+    if model_name not in KERAS_MODEL_BUILDERS:
+        raise ValueError('Unknown Keras model %r. Options: %s'
+                         % (model_name, list(KERAS_MODEL_BUILDERS)))
+    return KERAS_MODEL_BUILDERS[model_name](input_sh, output_sh)
