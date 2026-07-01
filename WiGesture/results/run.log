@@ -1,0 +1,348 @@
+/home/dnelson12/txst-reu-proj4/2026TxstREUProject4/csi_pipeline/models/vit.py:46: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(layer, num_layers=depth)
+/home/dnelson12/txst-reu-proj4/2026TxstREUProject4/csi_pipeline/models/vit.py:46: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(layer, num_layers=depth)
+/home/dnelson12/txst-reu-proj4/2026TxstREUProject4/csi_pipeline/models/vit.py:46: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(layer, num_layers=depth)
+/home/dnelson12/txst-reu-proj4/2026TxstREUProject4/csi_pipeline/models/vit.py:46: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(layer, num_layers=depth)
+Device: cpu | people: ['ID1', 'ID2', 'ID3', 'ID4', 'ID5', 'ID6', 'ID7', 'ID8'] | encoders: ['mlp', 'cnn', 'vit'] | eval: linear_probe
+  [ID1] windows: train 221  val 18  test 18
+    [pretrain] epoch   0  train 4.1214  val nan
+    [pretrain] epoch  20  train 1.9090  val nan
+    [pretrain] epoch  40  train 1.7294  val nan
+    [pretrain] epoch  60  train 1.6354  val nan
+    [pretrain] epoch  80  train 1.4968  val nan
+    [pretrain] epoch 100  train 1.4124  val nan
+    [pretrain] epoch 120  train 1.4089  val nan
+    [pretrain] epoch 140  train 1.3822  val nan
+    [pretrain] epoch 160  train 1.2730  val nan
+    [pretrain] epoch 180  train 1.3537  val nan
+    [pretrain] epoch 199  train 1.3198  val nan
+    [probe] best val acc 1.000
+  [ID1/mlp] test acc 0.667  macro-F1 0.611
+    [pretrain] epoch   0  train 4.8168  val nan
+    [pretrain] epoch  20  train 3.8748  val nan
+    [pretrain] epoch  40  train 3.2856  val nan
+    [pretrain] epoch  60  train 2.9595  val nan
+    [pretrain] epoch  80  train 2.8420  val nan
+    [pretrain] epoch 100  train 2.6201  val nan
+    [pretrain] epoch 120  train 2.6040  val nan
+    [pretrain] epoch 140  train 2.5233  val nan
+    [pretrain] epoch 160  train 2.5238  val nan
+    [pretrain] epoch 180  train 2.4282  val nan
+    [pretrain] epoch 199  train 2.3292  val nan
+    [probe] best val acc 0.833
+  [ID1/cnn] test acc 0.278  macro-F1 0.225
+    [pretrain] epoch   0  train 3.1498  val nan
+    [pretrain] epoch  20  train 1.4742  val nan
+    [pretrain] epoch  40  train 1.2752  val nan
+    [pretrain] epoch  60  train 1.2212  val nan
+    [pretrain] epoch  80  train 1.1623  val nan
+    [pretrain] epoch 100  train 1.0919  val nan
+    [pretrain] epoch 120  train 1.1154  val nan
+    [pretrain] epoch 140  train 1.1231  val nan
+    [pretrain] epoch 160  train 1.0557  val nan
+    [pretrain] epoch 180  train 1.0566  val nan
+    [pretrain] epoch 199  train 1.0459  val nan
+    [probe] best val acc 0.833
+  [ID1/vit] test acc 0.889  macro-F1 0.875
+  [ID2] windows: train 220  val 18  test 18
+    [pretrain] epoch   0  train 4.1260  val nan
+    [pretrain] epoch  20  train 2.2242  val nan
+    [pretrain] epoch  40  train 1.9486  val nan
+    [pretrain] epoch  60  train 1.8680  val nan
+    [pretrain] epoch  80  train 1.8052  val nan
+    [pretrain] epoch 100  train 1.7219  val nan
+    [pretrain] epoch 120  train 1.5894  val nan
+    [pretrain] epoch 140  train 1.7222  val nan
+    [pretrain] epoch 160  train 1.5618  val nan
+    [pretrain] epoch 180  train 1.5243  val nan
+    [pretrain] epoch 199  train 1.5479  val nan
+    [probe] best val acc 0.889
+  [ID2/mlp] test acc 0.778  macro-F1 0.750
+    [pretrain] epoch   0  train 4.7801  val nan
+    [pretrain] epoch  20  train 3.5962  val nan
+    [pretrain] epoch  40  train 3.1630  val nan
+    [pretrain] epoch  60  train 2.8396  val nan
+    [pretrain] epoch  80  train 2.8020  val nan
+    [pretrain] epoch 100  train 2.6737  val nan
+    [pretrain] epoch 120  train 2.6549  val nan
+    [pretrain] epoch 140  train 2.6685  val nan
+    [pretrain] epoch 160  train 2.5698  val nan
+    [pretrain] epoch 180  train 2.6094  val nan
+    [pretrain] epoch 199  train 2.4523  val nan
+    [probe] best val acc 0.889
+  [ID2/cnn] test acc 0.944  macro-F1 0.943
+    [pretrain] epoch   0  train 3.1661  val nan
+    [pretrain] epoch  20  train 1.7854  val nan
+    [pretrain] epoch  40  train 1.4615  val nan
+    [pretrain] epoch  60  train 1.3262  val nan
+    [pretrain] epoch  80  train 1.3580  val nan
+    [pretrain] epoch 100  train 1.3262  val nan
+    [pretrain] epoch 120  train 1.2403  val nan
+    [pretrain] epoch 140  train 1.2561  val nan
+    [pretrain] epoch 160  train 1.2109  val nan
+    [pretrain] epoch 180  train 1.2273  val nan
+    [pretrain] epoch 199  train 1.1537  val nan
+    [probe] best val acc 0.611
+  [ID2/vit] test acc 0.444  macro-F1 0.336
+  [ID3] windows: train 222  val 18  test 18
+    [pretrain] epoch   0  train 4.1745  val nan
+    [pretrain] epoch  20  train 1.9999  val nan
+    [pretrain] epoch  40  train 1.8139  val nan
+    [pretrain] epoch  60  train 1.7042  val nan
+    [pretrain] epoch  80  train 1.6332  val nan
+    [pretrain] epoch 100  train 1.6459  val nan
+    [pretrain] epoch 120  train 1.5724  val nan
+    [pretrain] epoch 140  train 1.5685  val nan
+    [pretrain] epoch 160  train 1.5176  val nan
+    [pretrain] epoch 180  train 1.5370  val nan
+    [pretrain] epoch 199  train 1.4707  val nan
+    [probe] best val acc 0.944
+  [ID3/mlp] test acc 0.833  macro-F1 0.778
+    [pretrain] epoch   0  train 4.7800  val nan
+    [pretrain] epoch  20  train 3.6318  val nan
+    [pretrain] epoch  40  train 3.4546  val nan
+    [pretrain] epoch  60  train 3.1796  val nan
+    [pretrain] epoch  80  train 2.9512  val nan
+    [pretrain] epoch 100  train 2.8769  val nan
+    [pretrain] epoch 120  train 2.7231  val nan
+    [pretrain] epoch 140  train 2.7003  val nan
+    [pretrain] epoch 160  train 2.6648  val nan
+    [pretrain] epoch 180  train 2.5799  val nan
+    [pretrain] epoch 199  train 2.4852  val nan
+    [probe] best val acc 0.333
+  [ID3/cnn] test acc 0.167  macro-F1 0.056
+    [pretrain] epoch   0  train 3.1881  val nan
+    [pretrain] epoch  20  train 1.5078  val nan
+    [pretrain] epoch  40  train 1.4261  val nan
+    [pretrain] epoch  60  train 1.2940  val nan
+    [pretrain] epoch  80  train 1.2131  val nan
+    [pretrain] epoch 100  train 1.1984  val nan
+    [pretrain] epoch 120  train 1.1760  val nan
+    [pretrain] epoch 140  train 1.1441  val nan
+    [pretrain] epoch 160  train 1.1863  val nan
+    [pretrain] epoch 180  train 1.0822  val nan
+    [pretrain] epoch 199  train 1.0416  val nan
+    [probe] best val acc 0.889
+  [ID3/vit] test acc 0.333  macro-F1 0.222
+  [ID4] windows: train 222  val 18  test 18
+    [pretrain] epoch   0  train 4.2183  val nan
+    [pretrain] epoch  20  train 2.0912  val nan
+    [pretrain] epoch  40  train 1.8197  val nan
+    [pretrain] epoch  60  train 1.7924  val nan
+    [pretrain] epoch  80  train 1.6682  val nan
+    [pretrain] epoch 100  train 1.6832  val nan
+    [pretrain] epoch 120  train 1.6185  val nan
+    [pretrain] epoch 140  train 1.5880  val nan
+    [pretrain] epoch 160  train 1.4743  val nan
+    [pretrain] epoch 180  train 1.5506  val nan
+    [pretrain] epoch 199  train 1.4990  val nan
+    [probe] best val acc 1.000
+  [ID4/mlp] test acc 1.000  macro-F1 1.000
+    [pretrain] epoch   0  train 4.7006  val nan
+    [pretrain] epoch  20  train 3.5869  val nan
+    [pretrain] epoch  40  train 3.0722  val nan
+    [pretrain] epoch  60  train 2.9164  val nan
+    [pretrain] epoch  80  train 2.7425  val nan
+    [pretrain] epoch 100  train 2.5713  val nan
+    [pretrain] epoch 120  train 2.5102  val nan
+    [pretrain] epoch 140  train 2.4301  val nan
+    [pretrain] epoch 160  train 2.3693  val nan
+    [pretrain] epoch 180  train 2.3106  val nan
+    [pretrain] epoch 199  train 2.3199  val nan
+    [probe] best val acc 0.667
+  [ID4/cnn] test acc 0.667  macro-F1 0.552
+    [pretrain] epoch   0  train 3.1397  val nan
+    [pretrain] epoch  20  train 1.5965  val nan
+    [pretrain] epoch  40  train 1.4184  val nan
+    [pretrain] epoch  60  train 1.3180  val nan
+    [pretrain] epoch  80  train 1.2262  val nan
+    [pretrain] epoch 100  train 1.1995  val nan
+    [pretrain] epoch 120  train 1.2219  val nan
+    [pretrain] epoch 140  train 1.1945  val nan
+    [pretrain] epoch 160  train 1.2248  val nan
+    [pretrain] epoch 180  train 1.1570  val nan
+    [pretrain] epoch 199  train 1.1508  val nan
+    [probe] best val acc 0.833
+  [ID4/vit] test acc 0.333  macro-F1 0.178
+  [loader] missing dataset/dynamic/ID5/waveright.csv, skipping
+  [ID5] windows: train 184  val 15  test 15
+    [pretrain] epoch   0  train 4.3586  val nan
+    [pretrain] epoch  20  train 2.3968  val nan
+    [pretrain] epoch  40  train 2.2293  val nan
+    [pretrain] epoch  60  train 2.0396  val nan
+    [pretrain] epoch  80  train 2.0118  val nan
+    [pretrain] epoch 100  train 2.0296  val nan
+    [pretrain] epoch 120  train 1.7948  val nan
+    [pretrain] epoch 140  train 1.9029  val nan
+    [pretrain] epoch 160  train 1.8077  val nan
+    [pretrain] epoch 180  train 1.7541  val nan
+    [pretrain] epoch 199  train 1.6672  val nan
+    [probe] best val acc 1.000/home/dnelson12/txst-reu-proj4/2026TxstREUProject4/csi_pipeline/models/vit.py:46: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(layer, num_layers=depth)
+/home/dnelson12/txst-reu-proj4/2026TxstREUProject4/csi_pipeline/models/vit.py:46: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(layer, num_layers=depth)
+/home/dnelson12/txst-reu-proj4/2026TxstREUProject4/csi_pipeline/models/vit.py:46: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(layer, num_layers=depth)
+/home/dnelson12/txst-reu-proj4/2026TxstREUProject4/csi_pipeline/models/vit.py:46: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(layer, num_layers=depth)
+
+  [ID5/mlp] test acc 0.867  macro-F1 0.725
+    [pretrain] epoch   0  train 4.7473  val nan
+    [pretrain] epoch  20  train 3.5917  val nan
+    [pretrain] epoch  40  train 3.3758  val nan
+    [pretrain] epoch  60  train 3.0848  val nan
+    [pretrain] epoch  80  train 2.9420  val nan
+    [pretrain] epoch 100  train 2.8641  val nan
+    [pretrain] epoch 120  train 2.7769  val nan
+    [pretrain] epoch 140  train 2.7951  val nan
+    [pretrain] epoch 160  train 2.5685  val nan
+    [pretrain] epoch 180  train 2.6088  val nan
+    [pretrain] epoch 199  train 2.4597  val nan
+    [probe] best val acc 0.800
+  [ID5/cnn] test acc 0.733  macro-F1 0.578
+    [pretrain] epoch   0  train 3.2460  val nan
+    [pretrain] epoch  20  train 1.9121  val nan
+    [pretrain] epoch  40  train 1.6967  val nan
+    [pretrain] epoch  60  train 1.5839  val nan
+    [pretrain] epoch  80  train 1.5343  val nan
+    [pretrain] epoch 100  train 1.5576  val nan
+    [pretrain] epoch 120  train 1.4710  val nan
+    [pretrain] epoch 140  train 1.3774  val nan
+    [pretrain] epoch 160  train 1.3203  val nan
+    [pretrain] epoch 180  train 1.4882  val nan
+    [pretrain] epoch 199  train 1.3984  val nan
+    [probe] best val acc 1.000
+  [ID5/vit] test acc 0.867  macro-F1 0.708
+  [ID6] windows: train 218  val 17  test 18
+    [pretrain] epoch   0  train 4.1432  val nan
+    [pretrain] epoch  20  train 2.0673  val nan
+    [pretrain] epoch  40  train 1.9237  val nan
+    [pretrain] epoch  60  train 1.7932  val nan
+    [pretrain] epoch  80  train 1.7515  val nan
+    [pretrain] epoch 100  train 1.6801  val nan
+    [pretrain] epoch 120  train 1.6516  val nan
+    [pretrain] epoch 140  train 1.6871  val nan
+    [pretrain] epoch 160  train 1.5566  val nan
+    [pretrain] epoch 180  train 1.5995  val nan
+    [pretrain] epoch 199  train 1.5282  val nan
+    [probe] best val acc 1.000
+  [ID6/mlp] test acc 1.000  macro-F1 1.000
+    [pretrain] epoch   0  train 4.7084  val nan
+    [pretrain] epoch  20  train 3.5497  val nan
+    [pretrain] epoch  40  train 3.1742  val nan
+    [pretrain] epoch  60  train 2.9033  val nan
+    [pretrain] epoch  80  train 2.7793  val nan
+    [pretrain] epoch 100  train 2.6674  val nan
+    [pretrain] epoch 120  train 2.6480  val nan
+    [pretrain] epoch 140  train 2.5082  val nan
+    [pretrain] epoch 160  train 2.5585  val nan
+    [pretrain] epoch 180  train 2.4115  val nan
+    [pretrain] epoch 199  train 2.3231  val nan
+    [probe] best val acc 0.647
+  [ID6/cnn] test acc 0.611  macro-F1 0.522
+    [pretrain] epoch   0  train 3.0989  val nan
+    [pretrain] epoch  20  train 1.6135  val nan
+    [pretrain] epoch  40  train 1.4753  val nan
+    [pretrain] epoch  60  train 1.3436  val nan
+    [pretrain] epoch  80  train 1.2377  val nan
+    [pretrain] epoch 100  train 1.2713  val nan
+    [pretrain] epoch 120  train 1.2153  val nan
+    [pretrain] epoch 140  train 1.1809  val nan
+    [pretrain] epoch 160  train 1.1971  val nan
+    [pretrain] epoch 180  train 1.2376  val nan
+    [pretrain] epoch 199  train 1.1225  val nan
+    [probe] best val acc 0.765
+  [ID6/vit] test acc 0.778  macro-F1 0.721
+  [ID7] windows: train 219  val 18  test 18
+    [pretrain] epoch   0  train 3.9953  val nan
+    [pretrain] epoch  20  train 2.1608  val nan
+    [pretrain] epoch  40  train 1.9879  val nan
+    [pretrain] epoch  60  train 1.8566  val nan
+    [pretrain] epoch  80  train 1.8149  val nan
+    [pretrain] epoch 100  train 1.7354  val nan
+    [pretrain] epoch 120  train 1.7335  val nan
+    [pretrain] epoch 140  train 1.7314  val nan
+    [pretrain] epoch 160  train 1.5464  val nan
+    [pretrain] epoch 180  train 1.6608  val nan
+    [pretrain] epoch 199  train 1.5515  val nan
+    [probe] best val acc 1.000
+  [ID7/mlp] test acc 1.000  macro-F1 1.000
+    [pretrain] epoch   0  train 4.6956  val nan
+    [pretrain] epoch  20  train 3.3097  val nan
+    [pretrain] epoch  40  train 3.0203  val nan
+    [pretrain] epoch  60  train 2.7084  val nan
+    [pretrain] epoch  80  train 2.6485  val nan
+    [pretrain] epoch 100  train 2.5738  val nan
+    [pretrain] epoch 120  train 2.5701  val nan
+    [pretrain] epoch 140  train 2.4270  val nan
+    [pretrain] epoch 160  train 2.4366  val nan
+    [pretrain] epoch 180  train 2.3987  val nan
+    [pretrain] epoch 199  train 2.2923  val nan
+    [probe] best val acc 0.833
+  [ID7/cnn] test acc 0.833  macro-F1 0.778
+    [pretrain] epoch   0  train 3.2129  val nan
+    [pretrain] epoch  20  train 1.6358  val nan
+    [pretrain] epoch  40  train 1.4028  val nan
+    [pretrain] epoch  60  train 1.3329  val nan
+    [pretrain] epoch  80  train 1.3416  val nan
+    [pretrain] epoch 100  train 1.2354  val nan
+    [pretrain] epoch 120  train 1.2020  val nan
+    [pretrain] epoch 140  train 1.2549  val nan
+    [pretrain] epoch 160  train 1.2615  val nan
+    [pretrain] epoch 180  train 1.1820  val nan
+    [pretrain] epoch 199  train 1.1373  val nan
+    [probe] best val acc 0.944
+  [ID7/vit] test acc 0.722  macro-F1 0.653
+  [loader] ID8/waveright.csv: taget='waveleft' != filename; using filename label 'waveright'
+  [ID8] windows: train 220  val 18  test 18
+    [pretrain] epoch   0  train 4.1320  val nan
+    [pretrain] epoch  20  train 2.2082  val nan
+    [pretrain] epoch  40  train 2.0209  val nan
+    [pretrain] epoch  60  train 1.9457  val nan
+    [pretrain] epoch  80  train 1.7984  val nan
+    [pretrain] epoch 100  train 1.7522  val nan
+    [pretrain] epoch 120  train 1.7002  val nan
+    [pretrain] epoch 140  train 1.7403  val nan
+    [pretrain] epoch 160  train 1.5449  val nan
+    [pretrain] epoch 180  train 1.5985  val nan
+    [pretrain] epoch 199  train 1.5560  val nan
+    [probe] best val acc 0.944
+  [ID8/mlp] test acc 1.000  macro-F1 1.000
+    [pretrain] epoch   0  train 4.7509  val nan
+    [pretrain] epoch  20  train 3.5384  val nan
+    [pretrain] epoch  40  train 3.3052  val nan
+    [pretrain] epoch  60  train 2.9613  val nan
+    [pretrain] epoch  80  train 2.9048  val nan
+    [pretrain] epoch 100  train 2.7460  val nan
+    [pretrain] epoch 120  train 2.6629  val nan
+    [pretrain] epoch 140  train 2.6108  val nan
+    [pretrain] epoch 160  train 2.5506  val nan
+    [pretrain] epoch 180  train 2.5373  val nan
+    [pretrain] epoch 199  train 2.4302  val nan
+    [probe] best val acc 0.500
+  [ID8/cnn] test acc 0.500  macro-F1 0.444
+    [pretrain] epoch   0  train 3.2583  val nan
+    [pretrain] epoch  20  train 1.7429  val nan
+    [pretrain] epoch  40  train 1.5221  val nan
+    [pretrain] epoch  60  train 1.3546  val nan
+    [pretrain] epoch  80  train 1.3585  val nan
+    [pretrain] epoch 100  train 1.3136  val nan
+    [pretrain] epoch 120  train 1.2098  val nan
+    [pretrain] epoch 140  train 1.2551  val nan
+    [pretrain] epoch 160  train 1.1901  val nan
+    [pretrain] epoch 180  train 1.2142  val nan
+    [pretrain] epoch 199  train 1.1329  val nan
+    [probe] best val acc 0.833
+  [ID8/vit] test acc 0.667  macro-F1 0.583
+
+=== Summary (mean/std over people) ===
+        accuracy         macro_f1        
+            mean     std     mean     std
+encoder                                  
+cnn       0.5917  0.2663   0.5122  0.2823
+mlp       0.8931  0.1279   0.8580  0.1592
+vit       0.6292  0.2284   0.5345  0.2567
+Plots written to results/plots

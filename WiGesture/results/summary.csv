@@ -1,0 +1,6 @@
+,accuracy,accuracy,macro_f1,macro_f1
+,mean,std,mean,std
+encoder,,,,
+cnn,0.5917,0.2663,0.5122,0.2823
+mlp,0.8931,0.1279,0.858,0.1592
+vit,0.6292,0.2284,0.5345,0.2567
