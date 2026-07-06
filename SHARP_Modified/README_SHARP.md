@@ -38,6 +38,10 @@ The considered movements are the following: walking (W) or running (R) around, j
 The CFR data for the empty room (E) is also provided. We obtained data from three volunteers, a male, and two females.
 The complete description of the dataset can be found in the reference paper.
 
+Each Sj is "a different triplet of environment-day-person" — so the number encodes environment+person+monitor combo, not just the person alone (e.g., S2 is the same setup as S1 but recorded on a different day; S6/S7 use different rooms/people entirely).
+
+The trailing letters you see in the folder names (S1a, S1b, S1c, S2a, S2b, etc.) are a level below this — separate measurement/recording sessions within the same Sj setup. Each contains one .mat file per activity (E, L, W, R, J, C, H).
+
 The code for SHARP is implemented in Python and can be found in the ```Python_code``` folder inside this repository. The scripts to perform the processing are described in the following, together with the specific parameters.
 
 ### Phase sanitization
@@ -56,7 +60,16 @@ Code Summary:
 6) Divide each packet's CSI by the mean amplitude to normalize because things like transmitter location shifts the amplitude on all of the subcarriers by the same amount
 
 ```bash
-python CSI_phase_sanitization_H_estimation.py <'directory of the input data'> <'process all the files in subdirectories (1) or not (0)'> <'name of the file to process (only if 0 in the previous field)'> <'number of spatial streams'> <'number of cores'> <'index where to start the processing for each stream'> <'index where to stop the processing for each stream'> 
+python CSI_phase_sanitization_H_estimation.py <'directory of the input data'> <'process all the files in subdirectories (1) or not (0)'> <'name of the file to process (only if 0 in the previous field)'> <'number of spatial streams'> <'number of cores'> <'index where to start the processing for each stream'> <'index where to stop the processinDownload the input data from http://researchdata.cab.unipd.it/id/eprint/624 and unzip the file.
+For your convenience, you can use the ```input_files``` inside this project folder to place the files but the scripts work whatever is the source folder.
+
+The dataset contains Wi-Fi channel frequency response (CFR) data collected in an IEEE 802.11ac network through [NEXMON CSI](https://github.com/seemoo-lab/nexmon_csi). 
+The information is collected by a monitor node (ASUS RT-AC86U router) while two terminals are exchanging traffic in channel 42 (5.21 GHz for the center frequency and 80 MHz of bandwidth) and a person acts as an obstacle for the transmission by performing different activities. 
+The considered movements are the following: walking (W) or running (R) around, jumping (J) in place, sitting (L) or standing (S) somewhere in the room, sitting down and standing up (C) continuously, and doing arm gym (H).
+The CFR data for the empty room (E) is also provided. We obtained data from three volunteers, a male, and two females.
+The complete description of the dataset can be found in the reference paper.
+
+The code for SHARP is implemented in Python and can be found in the ```Python_code``` folder inside this repository. The scripts to perform the processing are described in the following, together with the specific parameters.g for each stream'> 
 ```
 e.g., python CSI_phase_sanitization_H_estimation.py ../input_files/S1a/ 0 S1a_E 1 4 0 -1
 

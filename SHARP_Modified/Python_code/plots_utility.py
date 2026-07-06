@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -30,6 +31,30 @@ rcParams['font.serif'] = 'DejaVu Serif'
 rcParams['text.usetex'] = False
 # rcParams['text.latex.preamble'] = r'\usepackage{newtxmath}'  # needs LaTeX + newtx
 rcParams['font.size'] = 16
+
+
+def _savefig_both(basename):
+    """Save the current figure as both PDF and PNG, sorted into plots/pdfs/ and
+    plots/pngs/ instead of dumping every format into a single flat plots/ folder."""
+    os.makedirs('./plots/pdfs', exist_ok=True)
+    os.makedirs('./plots/pngs', exist_ok=True)
+    plt.savefig('./plots/pdfs/' + basename + '.pdf', bbox_inches='tight')
+    plt.savefig('./plots/pngs/' + basename + '.png', bbox_inches='tight', dpi=200)
+
+
+# What each activity code stands for, shown as a key under the evaluation plots.
+ACTIVITY_MEANINGS = {'E': 'empty room', 'L': 'sitting', 'W': 'walking', 'R': 'running', 'J': 'jumping'}
+
+
+def _activity_key_text(activities):
+    """'E, L, W' -> 'E = empty room,  L = sitting,  W = walking'. Labels with a
+    trailing session digit (J1, J2) fall back to their base letter's meaning."""
+    parts = []
+    for act in activities:
+        meaning = ACTIVITY_MEANINGS.get(act, ACTIVITY_MEANINGS.get(str(act)[:1]))
+        if meaning is not None:
+            parts.append('%s = %s' % (act, meaning))
+    return ',  '.join(parts)
 
 
 def plot_r_angle(complex_opt_r, start_plot, end_plot, delta_t, save_name):
@@ -188,20 +213,26 @@ def plt_doppler_antennas(doppler_spectrum_list, sliding_lenght, delta_v, name_pl
         plt.close()
 
 
-def plt_confusion_matrix(number_activities, confusion_matrix, activities, name):
+def plt_confusion_matrix(number_activities, confusion_matrix, activities, name, model_name=None, title_suffix=''):
     confusion_matrix_normaliz_row = np.transpose(confusion_matrix / np.sum(confusion_matrix, axis=1).reshape(-1, 1))
-    fig = plt.figure(constrained_layout=True)
-    fig.set_size_inches(5.5, 4)
-    ax = fig.add_axes((0.18, 0.15, 0.6, 0.8))
+    # constrained_layout doesn't manage axes placed via add_axes' absolute rect (hence the
+    # "no gridspecs with layoutgrids" warning) -- so the title and the activity key each
+    # need their own reserved vertical band: taller figure + axes rect clear of both.
+    fig = plt.figure()
+    fig.set_size_inches(5.5, 5.1)
+    if model_name is not None:
+        title = model_name if not title_suffix else '%s -- %s' % (model_name, title_suffix)
+        fig.suptitle(title, fontsize=16)
+    ax = fig.add_axes((0.18, 0.21, 0.6, 0.62))
     im1 = ax.pcolor(np.linspace(0.5, number_activities + 0.5, number_activities + 1),
                     np.linspace(0.5, number_activities + 0.5, number_activities + 1),
                     confusion_matrix_normaliz_row, cmap='Blues', edgecolors='black', vmin=0, vmax=1)
-    ax.set_xlabel('Actual activity', FontSize=18)
+    ax.set_xlabel('Actual activity', fontsize=18)
     ax.set_xticks(np.linspace(1, number_activities, number_activities))
-    ax.set_xticklabels(labels=activities, FontSize=18)
+    ax.set_xticklabels(labels=activities, fontsize=18)
     ax.set_yticks(np.linspace(1, number_activities, number_activities))
-    ax.set_yticklabels(labels=activities, FontSize=18, rotation=45)
-    ax.set_ylabel('Predicted activity', FontSize=18)
+    ax.set_yticklabels(labels=activities, fontsize=18, rotation=45)
+    ax.set_ylabel('Predicted activity', fontsize=18)
 
     for x_ax in range(confusion_matrix_normaliz_row.shape[0]):
         for y_ax in range(confusion_matrix_normaliz_row.shape[1]):
@@ -213,14 +244,66 @@ def plt_confusion_matrix(number_activities, confusion_matrix, activities, name):
                 ax.text(y_ax + 1, x_ax + 1, '%.2f' % value_c, horizontalalignment='center',
                         verticalalignment='center', fontsize=16, color=col)
 
-    cbar_ax = fig.add_axes([0.83, 0.15, 0.03, 0.8])
+    cbar_ax = fig.add_axes([0.83, 0.21, 0.03, 0.62])
     cbar = fig.colorbar(im1, cax=cbar_ax)
-    cbar.ax.set_ylabel('Accuracy', FontSize=18)
+    cbar.ax.set_ylabel('Accuracy', fontsize=18)
     cbar.ax.tick_params(axis="y", labelsize=16)
 
+    fig.text(0.5, 0.03, _activity_key_text(activities), ha='center', fontsize=10)
+
+    _savefig_both('cm_' + name)
+
+
+def plt_loss_curve(history_dict, name, model_name=None):
+    """history_dict is a Keras History.history dict (from csi_model.fit())."""
+    epochs_range = range(1, len(history_dict['loss']) + 1)
+    has_acc = 'sparse_categorical_accuracy' in history_dict
+    fig, axes = plt.subplots(1, 2 if has_acc else 1, figsize=(10 if has_acc else 5.5, 4), squeeze=False)
+    axes = axes[0]
+    if model_name is not None:
+        fig.suptitle(model_name, fontsize=16)
+
+    axes[0].plot(epochs_range, history_dict['loss'], label='train')
+    axes[0].plot(epochs_range, history_dict['val_loss'], label='validation')
+    axes[0].set_xlabel('Epoch')
+    axes[0].set_ylabel('Loss')
+    axes[0].set_title('Loss')
+    axes[0].legend()
+
+    if has_acc:
+        axes[1].plot(epochs_range, history_dict['sparse_categorical_accuracy'], label='train')
+        axes[1].plot(epochs_range, history_dict['val_sparse_categorical_accuracy'], label='validation')
+        axes[1].set_xlabel('Epoch')
+        axes[1].set_ylabel('Accuracy')
+        axes[1].set_title('Accuracy')
+        axes[1].legend()
+
     plt.tight_layout()
-    name_fig = './plots/cm_' + name + '.pdf'
-    plt.savefig(name_fig)
+    _savefig_both('loss_' + name)
+    plt.close(fig)
+
+
+def plt_roc_curve(fpr, tpr, roc_auc, fpr_micro, tpr_micro, roc_auc_micro, roc_auc_macro, activities, name,
+                  model_name=None):
+    """fpr/tpr/roc_auc are dicts keyed by class index (one-vs-rest curves); fpr_micro/tpr_micro/
+    roc_auc_micro are the pooled micro-average curve; roc_auc_macro is the mean of the per-class AUCs."""
+    fig = plt.figure(figsize=(5.5, 5))
+    ax = fig.add_subplot(1, 1, 1)
+    for i, act in enumerate(activities):
+        ax.plot(fpr[i], tpr[i], label='%s (AUC = %.3f)' % (act, roc_auc[i]))
+    ax.plot(fpr_micro, tpr_micro, linestyle=':', linewidth=2.5, label='micro-average (AUC = %.3f)' % roc_auc_micro)
+    ax.plot([0, 1], [0, 1], 'k--', linewidth=1, label='chance')
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    title = 'ROC curve\nmacro-average AUC = %.3f' % roc_auc_macro
+    if model_name is not None:
+        title = '%s\n%s' % (model_name, title)
+    ax.set_title(title)
+    ax.legend(loc='lower right', fontsize=8)
+    plt.tight_layout(rect=(0, 0.05, 1, 1))  # keep a bottom band free for the activity key
+    fig.text(0.5, 0.02, _activity_key_text(activities), ha='center', fontsize=10)
+    _savefig_both('roc_' + name)
+    plt.close(fig)
 
 
 def plt_doppler_activities(doppler_spectrum_list, antenna, csi_label_dict, sliding_lenght, delta_v, name_plot):

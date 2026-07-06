@@ -17,13 +17,15 @@
 import argparse
 import numpy as np
 import pickle
-from SHARP_Modified.Python_code.plots_utility import plt_confusion_matrix
+from SHARP_Modified.Python_code.plots_utility import plt_confusion_matrix, plt_roc_curve
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('name_file', help='Name of the file')
     parser.add_argument('activities', help='Activities to be considered')
+    parser.add_argument('--model', help='Model name to label the plots with (optional)', default=None,
+                        required=False)
     args = parser.parse_args()
 
     name_file = args.name_file  # string
@@ -35,7 +37,7 @@ if __name__ == '__main__':
 
     folder_name = './outputs/'
 
-    name_file = folder_name + name_file + '.txt'
+    name_file = folder_name + name_file + '.for_machine.pkl'
 
     with open(name_file, "rb") as fp:  # Pickling
         conf_matrix_dict = pickle.load(fp)
@@ -43,7 +45,15 @@ if __name__ == '__main__':
     conf_matrix_max_merge = conf_matrix_dict['conf_matrix_max_merge']
 
     name_plot = args.name_file
-    plt_confusion_matrix(activities.shape[0], conf_matrix, activities=activities, name=name_plot)
+    plt_confusion_matrix(activities.shape[0], conf_matrix, activities=activities, name=name_plot,
+                        model_name=args.model, title_suffix='Single-antenna')
 
     name_plot = args.name_file + '_max_merge'
-    plt_confusion_matrix(activities.shape[0], conf_matrix_max_merge, activities=activities, name=name_plot)
+    plt_confusion_matrix(activities.shape[0], conf_matrix_max_merge, activities=activities, name=name_plot,
+                        model_name=args.model, title_suffix='Decision-fusion')
+
+    if 'roc_auc_macro' in conf_matrix_dict:
+        plt_roc_curve(conf_matrix_dict['fpr'], conf_matrix_dict['tpr'], conf_matrix_dict['roc_auc'],
+                     conf_matrix_dict['fpr_micro'], conf_matrix_dict['tpr_micro'],
+                     conf_matrix_dict['roc_auc_micro'], conf_matrix_dict['roc_auc_macro'],
+                     activities=activities, name=args.name_file, model_name=args.model)

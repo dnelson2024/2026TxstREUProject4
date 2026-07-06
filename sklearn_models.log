@@ -1,0 +1,279 @@
+Models to run: svm knn gradient_boosting naive_bayes
+=================== [svm] TRAIN ===================
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1783131720.766960 3567897 gpu_device.cc:2043] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 10206 MB memory:  -> device: 0, name: NVIDIA GB10, pci bus id: 000f:01:00.0, compute capability: 12.1a
+/home/shine-lab/anaconda3/envs/p4v3.11/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1879: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", result.shape[0])
+/home/shine-lab/anaconda3/envs/p4v3.11/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1879: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", result.shape[0])
+/home/shine-lab/anaconda3/envs/p4v3.11/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1879: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", result.shape[0])
+/home/shine-lab/anaconda3/envs/p4v3.11/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1879: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", result.shape[0])
+[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+=================== [svm] TEST ===================
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1783131852.034822 3568239 gpu_device.cc:2043] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 10645 MB memory:  -> device: 0, name: NVIDIA GB10, pci bus id: 000f:01:00.0, compute capability: 12.1a
+[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+ROC-AUC (macro, one-vs-rest): 0.877527
+ROC-AUC (micro, one-vs-rest): 0.874740
+per-activity ROC-AUC:
+  E: 0.991836
+  L: 0.773059
+  W: 0.850216
+  R: 0.888286
+  J: 0.884236
+accuracy 0.6068941504178273
+fscore [0.68724986 0.01706485 0.4902507  0.61527273 0.94043887]
+[[601   0   0   0   0]
+ [547   5   0   0   0]
+ [  0   0 264 331  18]
+ [  0   0 194 423   3]
+ [  0  29   6   1 450]]
+=================== [svm] METRICS ===================
+single antenna - average accuracy 0.530641, average precision 0.475822, average recall 0.523469, average fscore 0.523469
+per-activity fscores (single antenna):
+  E: 0.667778
+  L: 0.051005
+  W: 0.405291
+  R: 0.641163
+  J: 0.586151
+average fscore 0.470277
+per-activity accuracies (single antenna):
+  E: 1.000000
+  L: 0.029891
+  W: 0.349918
+  R: 0.675806
+  J: 0.561728
+
+ROC-AUC (macro, one-vs-rest, single antenna): 0.877527
+ROC-AUC (micro, one-vs-rest, single antenna): 0.874740
+per-activity ROC-AUC (single antenna):
+  E: 0.991836
+  L: 0.773059
+  W: 0.850216
+  R: 0.888286
+  J: 0.884236
+
+-- FINAL DECISION --
+decision-fusion - average accuracy 0.606894, average precision 0.551044, average recall 0.609582, average fscore 0.550055
+per-activity fscores (decision-fusion):
+  E: 0.687250
+  L: 0.017065
+  W: 0.490251
+  R: 0.615273
+  J: 0.940439
+per-activity accuracies (decision-fusion):
+  E: 1.000000
+  L: 0.009058
+  W: 0.430669
+  R: 0.682258
+  J: 0.925926
+
+accuracies - one antenna 0.530641, two antennas 0.556871, three antennas 0.659819, four antennas 0.606894
+fscores - one antenna 0.462391, two antennas 0.503848, three antennas 0.597629, four antennas 0.550055
+=================== [svm] PLOTS ===================
+summary written: outputs/results/summary_S7a.csv (8 models)
+=================== [knn] TRAIN ===================
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1783131898.068326 3568467 gpu_device.cc:2043] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 10705 MB memory:  -> device: 0, name: NVIDIA GB10, pci bus id: 000f:01:00.0, compute capability: 12.1a
+[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+=================== [knn] TEST ===================
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1783131979.862138 3568723 gpu_device.cc:2043] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 11341 MB memory:  -> device: 0, name: NVIDIA GB10, pci bus id: 000f:01:00.0, compute capability: 12.1a
+[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+ROC-AUC (macro, one-vs-rest): 0.746677
+ROC-AUC (micro, one-vs-rest): 0.738467
+per-activity ROC-AUC:
+  E: 0.501816
+  L: 0.839252
+  W: 0.778772
+  R: 0.846946
+  J: 0.766598
+accuracy 0.5710306406685237
+fscore [0.06349206 0.60792952 0.59919679 0.68922529 0.66236559]
+[[ 20 581   0   0   0]
+ [  0 552   0   0   0]
+ [  0   4 373 111 125]
+ [  0   0 222 387  11]
+ [  9 127  37   5 308]]
+=================== [knn] METRICS ===================
+single antenna - average accuracy 0.468054, average precision 0.477212, average recall 0.472435, average fscore 0.472435
+per-activity fscores (single antenna):
+  E: 0.130404
+  L: 0.580104
+  W: 0.477386
+  R: 0.538264
+  J: 0.413228
+average fscore 0.427877
+per-activity accuracies (single antenna):
+  E: 0.077787
+  L: 0.956069
+  W: 0.488581
+  R: 0.463710
+  J: 0.376029
+
+ROC-AUC (macro, one-vs-rest, single antenna): 0.746677
+ROC-AUC (micro, one-vs-rest, single antenna): 0.738467
+per-activity ROC-AUC (single antenna):
+  E: 0.501816
+  L: 0.839252
+  W: 0.778772
+  R: 0.846946
+  J: 0.766598
+
+-- FINAL DECISION --
+decision-fusion - average accuracy 0.571031, average precision 0.635926, average recall 0.579940, average fscore 0.524442
+per-activity fscores (decision-fusion):
+  E: 0.063492
+  L: 0.607930
+  W: 0.599197
+  R: 0.689225
+  J: 0.662366
+per-activity accuracies (decision-fusion):
+  E: 0.033278
+  L: 1.000000
+  W: 0.608483
+  R: 0.624194
+  J: 0.633745
+
+accuracies - one antenna 0.468054, two antennas 0.507892, three antennas 0.538649, four antennas 0.571031
+fscores - one antenna 0.423521, two antennas 0.464245, three antennas 0.491246, four antennas 0.524442
+=================== [knn] PLOTS ===================
+summary written: outputs/results/summary_S7a.csv (9 models)
+=================== [gradient_boosting] TRAIN ===================
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1783132004.467156 3568926 gpu_device.cc:2043] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 10875 MB memory:  -> device: 0, name: NVIDIA GB10, pci bus id: 000f:01:00.0, compute capability: 12.1a
+[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+=================== [gradient_boosting] TEST ===================
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1783132177.824907 3569369 gpu_device.cc:2043] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 11970 MB memory:  -> device: 0, name: NVIDIA GB10, pci bus id: 000f:01:00.0, compute capability: 12.1a
+[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+ROC-AUC (macro, one-vs-rest): 0.814912
+ROC-AUC (micro, one-vs-rest): 0.768149
+per-activity ROC-AUC:
+  E: 0.704914
+  L: 0.794008
+  W: 0.806492
+  R: 0.875568
+  J: 0.893578
+accuracy 0.5999303621169917
+fscore [0.02298851 0.64858491 0.50628019 0.68891856 0.85651214]
+[[  7 594   0   0   0]
+ [  1 550   0   0   1]
+ [  0   0 262 324  27]
+ [  0   0 100 516   4]
+ [  0   0  60  38 388]]
+=================== [gradient_boosting] METRICS ===================
+single antenna - average accuracy 0.489380, average precision 0.501355, average recall 0.497200, average fscore 0.497200
+per-activity fscores (single antenna):
+  E: 0.111976
+  L: 0.605903
+  W: 0.397403
+  R: 0.569319
+  J: 0.556306
+average fscore 0.448181
+per-activity accuracies (single antenna):
+  E: 0.062812
+  L: 0.897192
+  W: 0.374388
+  R: 0.621774
+  J: 0.529835
+
+ROC-AUC (macro, one-vs-rest, single antenna): 0.814912
+ROC-AUC (micro, one-vs-rest, single antenna): 0.768149
+per-activity ROC-AUC (single antenna):
+  E: 0.704914
+  L: 0.794008
+  W: 0.806492
+  R: 0.875568
+  J: 0.893578
+
+-- FINAL DECISION --
+decision-fusion - average accuracy 0.599930, average precision 0.697626, average recall 0.613208, average fscore 0.544657
+per-activity fscores (decision-fusion):
+  E: 0.022989
+  L: 0.648585
+  W: 0.506280
+  R: 0.688919
+  J: 0.856512
+per-activity accuracies (decision-fusion):
+  E: 0.011647
+  L: 0.996377
+  W: 0.427406
+  R: 0.832258
+  J: 0.798354
+
+accuracies - one antenna 0.489380, two antennas 0.548688, three antennas 0.578952, four antennas 0.599930
+fscores - one antenna 0.444611, two antennas 0.499558, three antennas 0.527414, four antennas 0.544657
+=================== [gradient_boosting] PLOTS ===================
+summary written: outputs/results/summary_S7a.csv (10 models)
+=================== [naive_bayes] TRAIN ===================
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1783132201.910065 3569563 gpu_device.cc:2043] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 11951 MB memory:  -> device: 0, name: NVIDIA GB10, pci bus id: 000f:01:00.0, compute capability: 12.1a
+[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+=================== [naive_bayes] TEST ===================
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1783132271.844273 3569789 gpu_device.cc:2043] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 11970 MB memory:  -> device: 0, name: NVIDIA GB10, pci bus id: 000f:01:00.0, compute capability: 12.1a
+[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+ROC-AUC (macro, one-vs-rest): 0.826263
+ROC-AUC (micro, one-vs-rest): 0.831352
+per-activity ROC-AUC:
+  E: 0.902416
+  L: 0.734938
+  W: 0.782590
+  R: 0.889708
+  J: 0.821664
+accuracy 0.6270891364902507
+fscore [0.76996587 0.44645161 0.16991643 0.75898802 0.67445483]
+[[564  37   0   0   0]
+ [300 173   0   0  79]
+ [  0   0  61 289 263]
+ [  0   0  27 570  23]
+ [  0  13  17  23 433]]
+=================== [naive_bayes] METRICS ===================
+single antenna - average accuracy 0.553447, average precision 0.543387, average recall 0.555206, average fscore 0.555206
+per-activity fscores (single antenna):
+  E: 0.780541
+  L: 0.465182
+  W: 0.273326
+  R: 0.606323
+  J: 0.513503
+average fscore 0.527775
+per-activity accuracies (single antenna):
+  E: 0.894343
+  L: 0.373641
+  W: 0.203100
+  R: 0.649597
+  J: 0.655350
+
+ROC-AUC (macro, one-vs-rest, single antenna): 0.826263
+ROC-AUC (micro, one-vs-rest, single antenna): 0.831352
+per-activity ROC-AUC (single antenna):
+  E: 0.902416
+  L: 0.734938
+  W: 0.782590
+  R: 0.889708
+  J: 0.821664
+
+-- FINAL DECISION --
+decision-fusion - average accuracy 0.627089, average precision 0.639676, average recall 0.632331, average fscore 0.563955
+per-activity fscores (decision-fusion):
+  E: 0.769966
+  L: 0.446452
+  W: 0.169916
+  R: 0.758988
+  J: 0.674455
+per-activity accuracies (decision-fusion):
+  E: 0.938436
+  L: 0.313406
+  W: 0.099511
+  R: 0.919355
+  J: 0.890947
+
+accuracies - one antenna 0.553447, two antennas 0.571495, three antennas 0.619603, four antennas 0.627089
+fscores - one antenna 0.528159, two antennas 0.511553, three antennas 0.574178, four antennas 0.563955
+=================== [naive_bayes] PLOTS ===================
+summary written: outputs/results/summary_S7a.csv (11 models)
+All models done.
+=== SKLEARN MODELS COMPLETE: svm knn gradient_boosting naive_bayes in results/ ===

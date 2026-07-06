@@ -1,0 +1,166 @@
+lstm|0.0001|0.2|{}
+lstm|0.0001|0.2|{"units": 128}
+lstm|0.0001|0.2|{"units": 128, "num_layers": 3}
+lstm|0.0001|0.2|{"units": 32}
+lstm|0.0001|0.3|{}
+lstm|0.0001|0.3|{"units": 128}
+lstm|0.0001|0.3|{"units": 128, "num_layers": 3}
+lstm|0.0001|0.3|{"units": 32}
+lstm|0.0001|0.4|{}
+lstm|0.0001|0.4|{"units": 128}
+lstm|0.0001|0.4|{"units": 128, "num_layers": 3}
+lstm|0.0001|0.4|{"units": 32}
+lstm|0.0003|0.2|{}
+lstm|0.0003|0.2|{"units": 128}
+lstm|0.0003|0.2|{"units": 128, "num_layers": 3}
+lstm|0.0003|0.2|{"units": 32}
+lstm|0.0003|0.3|{}
+lstm|0.0003|0.3|{"units": 128}
+lstm|0.0003|0.3|{"units": 128, "num_layers": 3}
+lstm|0.0003|0.3|{"units": 32}
+lstm|0.0003|0.4|{}
+lstm|0.0003|0.4|{"units": 128}
+lstm|0.0003|0.4|{"units": 128, "num_layers": 3}
+lstm|0.0003|0.4|{"units": 32}
+bilstm|0.0001|0.2|{}
+bilstm|0.0001|0.2|{"units": 128}
+bilstm|0.0001|0.2|{"num_layers": 1}
+bilstm|0.0001|0.2|{"merge_mode": "sum"}
+bilstm|0.0001|0.3|{}
+bilstm|0.0001|0.3|{"units": 128}
+bilstm|0.0001|0.3|{"num_layers": 1}
+bilstm|0.0001|0.3|{"merge_mode": "sum"}
+bilstm|0.0001|0.4|{}
+bilstm|0.0001|0.4|{"units": 128}
+bilstm|0.0001|0.4|{"num_layers": 1}
+bilstm|0.0001|0.4|{"merge_mode": "sum"}
+bilstm|0.0003|0.2|{}
+bilstm|0.0003|0.2|{"units": 128}
+bilstm|0.0003|0.2|{"num_layers": 1}
+bilstm|0.0003|0.2|{"merge_mode": "sum"}
+bilstm|0.0003|0.3|{}
+bilstm|0.0003|0.3|{"units": 128}
+bilstm|0.0003|0.3|{"num_layers": 1}
+bilstm|0.0003|0.3|{"merge_mode": "sum"}
+bilstm|0.0003|0.4|{}
+bilstm|0.0003|0.4|{"units": 128}
+bilstm|0.0003|0.4|{"num_layers": 1}
+bilstm|0.0003|0.4|{"merge_mode": "sum"}
+rcnn|0.0001|0.2|{}
+rcnn|0.0001|0.2|{"units": 128}
+rcnn|0.0001|0.2|{"num_layers": 1}
+rcnn|0.0001|0.2|{"num_filters": [16, 32, 64]}
+rcnn|0.0001|0.3|{}
+rcnn|0.0001|0.3|{"units": 128}
+rcnn|0.0001|0.3|{"num_layers": 1}
+rcnn|0.0001|0.3|{"num_filters": [16, 32, 64]}
+rcnn|0.0001|0.4|{}
+rcnn|0.0001|0.4|{"units": 128}
+rcnn|0.0001|0.4|{"num_layers": 1}
+rcnn|0.0001|0.4|{"num_filters": [16, 32, 64]}
+rcnn|0.0003|0.2|{}
+rcnn|0.0003|0.2|{"units": 128}
+rcnn|0.0003|0.2|{"num_layers": 1}
+rcnn|0.0003|0.2|{"num_filters": [16, 32, 64]}
+rcnn|0.0003|0.3|{}
+rcnn|0.0003|0.3|{"units": 128}
+rcnn|0.0003|0.3|{"num_layers": 1}
+rcnn|0.0003|0.3|{"num_filters": [16, 32, 64]}
+rcnn|0.0003|0.4|{}
+rcnn|0.0003|0.4|{"units": 128}
+rcnn|0.0003|0.4|{"num_layers": 1}
+rcnn|0.0003|0.4|{"num_filters": [16, 32, 64]}
+cnn_bilstm|0.0001|0.2|{}
+cnn_bilstm|0.0001|0.2|{"units": 128}
+cnn_bilstm|0.0001|0.2|{"num_filters": [16, 32, 64]}
+cnn_bilstm|0.0001|0.2|{"dense_units": 64}
+cnn_bilstm|0.0001|0.3|{}
+cnn_bilstm|0.0001|0.3|{"units": 128}
+cnn_bilstm|0.0001|0.3|{"num_filters": [16, 32, 64]}
+cnn_bilstm|0.0001|0.3|{"dense_units": 64}
+cnn_bilstm|0.0001|0.4|{}
+cnn_bilstm|0.0001|0.4|{"units": 128}
+cnn_bilstm|0.0001|0.4|{"num_filters": [16, 32, 64]}
+cnn_bilstm|0.0001|0.4|{"dense_units": 64}
+cnn_bilstm|0.0003|0.2|{}
+cnn_bilstm|0.0003|0.2|{"units": 128}
+cnn_bilstm|0.0003|0.2|{"num_filters": [16, 32, 64]}
+cnn_bilstm|0.0003|0.2|{"dense_units": 64}
+cnn_bilstm|0.0003|0.3|{}
+cnn_bilstm|0.0003|0.3|{"units": 128}
+cnn_bilstm|0.0003|0.3|{"num_filters": [16, 32, 64]}
+cnn_bilstm|0.0003|0.3|{"dense_units": 64}
+cnn_bilstm|0.0003|0.4|{}
+cnn_bilstm|0.0003|0.4|{"units": 128}
+cnn_bilstm|0.0003|0.4|{"num_filters": [16, 32, 64]}
+cnn_bilstm|0.0003|0.4|{"dense_units": 64}
+vit|0.0001|0.2|{}
+vit|0.0001|0.2|{"dim": 128, "heads": 8}
+vit|0.0001|0.2|{"depth": 6}
+vit|0.0001|0.2|{"patch": [20, 20]}
+vit|0.0001|0.3|{}
+vit|0.0001|0.3|{"dim": 128, "heads": 8}
+vit|0.0001|0.3|{"depth": 6}
+vit|0.0001|0.3|{"patch": [20, 20]}
+vit|0.0001|0.4|{}
+vit|0.0001|0.4|{"dim": 128, "heads": 8}
+vit|0.0001|0.4|{"depth": 6}
+vit|0.0001|0.4|{"patch": [20, 20]}
+vit|0.0003|0.2|{}
+vit|0.0003|0.2|{"dim": 128, "heads": 8}
+vit|0.0003|0.2|{"depth": 6}
+vit|0.0003|0.2|{"patch": [20, 20]}
+vit|0.0003|0.3|{}
+vit|0.0003|0.3|{"dim": 128, "heads": 8}
+vit|0.0003|0.3|{"depth": 6}
+vit|0.0003|0.3|{"patch": [20, 20]}
+vit|0.0003|0.4|{}
+vit|0.0003|0.4|{"dim": 128, "heads": 8}
+vit|0.0003|0.4|{"depth": 6}
+vit|0.0003|0.4|{"patch": [20, 20]}
+widar3|0.001|0.3|{}
+widar3|0.001|0.3|{"frame_len": 20}
+widar3|0.001|0.3|{"gru_units": 64}
+widar3|0.001|0.3|{"dense_units": 128}
+widar3|0.001|0.5|{}
+widar3|0.001|0.5|{"frame_len": 20}
+widar3|0.001|0.5|{"gru_units": 64}
+widar3|0.001|0.5|{"dense_units": 128}
+widar3|0.0003|0.3|{}
+widar3|0.0003|0.3|{"frame_len": 20}
+widar3|0.0003|0.3|{"gru_units": 64}
+widar3|0.0003|0.3|{"dense_units": 128}
+widar3|0.0003|0.5|{}
+widar3|0.0003|0.5|{"frame_len": 20}
+widar3|0.0003|0.5|{"gru_units": 64}
+widar3|0.0003|0.5|{"dense_units": 128}
+svm|-|-|{"C": 1, "kernel": "rbf", "pca_components": 128}
+svm|-|-|{"C": 1, "kernel": "rbf", "pca_components": 256}
+svm|-|-|{"C": 1, "kernel": "linear", "pca_components": 128}
+svm|-|-|{"C": 1, "kernel": "linear", "pca_components": 256}
+svm|-|-|{"C": 10, "kernel": "rbf", "pca_components": 128}
+svm|-|-|{"C": 10, "kernel": "rbf", "pca_components": 256}
+svm|-|-|{"C": 10, "kernel": "linear", "pca_components": 128}
+svm|-|-|{"C": 10, "kernel": "linear", "pca_components": 256}
+knn|-|-|{"n_neighbors": 5, "weights": "uniform"}
+knn|-|-|{"n_neighbors": 5, "weights": "distance"}
+knn|-|-|{"n_neighbors": 11, "weights": "uniform"}
+knn|-|-|{"n_neighbors": 11, "weights": "distance"}
+knn|-|-|{"n_neighbors": 25, "weights": "uniform"}
+knn|-|-|{"n_neighbors": 25, "weights": "distance"}
+gradient_boosting|-|-|{"n_estimators": 100, "learning_rate": 0.1, "pca_components": 128}
+gradient_boosting|-|-|{"n_estimators": 100, "learning_rate": 0.1, "pca_components": 256}
+gradient_boosting|-|-|{"n_estimators": 100, "learning_rate": 0.05, "pca_components": 128}
+gradient_boosting|-|-|{"n_estimators": 100, "learning_rate": 0.05, "pca_components": 256}
+gradient_boosting|-|-|{"n_estimators": 500, "learning_rate": 0.1, "pca_components": 128}
+gradient_boosting|-|-|{"n_estimators": 500, "learning_rate": 0.1, "pca_components": 256}
+gradient_boosting|-|-|{"n_estimators": 500, "learning_rate": 0.05, "pca_components": 128}
+gradient_boosting|-|-|{"n_estimators": 500, "learning_rate": 0.05, "pca_components": 256}
+naive_bayes|-|-|{"var_smoothing": 1e-09, "pca_components": 128}
+naive_bayes|-|-|{"var_smoothing": 1e-09, "pca_components": 256}
+naive_bayes|-|-|{"var_smoothing": 1e-06, "pca_components": 128}
+naive_bayes|-|-|{"var_smoothing": 1e-06, "pca_components": 256}
+random_forest|-|-|{"max_depth": null, "max_features": "sqrt"}
+random_forest|-|-|{"max_depth": null, "max_features": 0.1}
+random_forest|-|-|{"max_depth": 20, "max_features": "sqrt"}
+random_forest|-|-|{"max_depth": 20, "max_features": 0.1}

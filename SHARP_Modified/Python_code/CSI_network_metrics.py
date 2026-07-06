@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     folder_name = './outputs/'
 
-    name_file = folder_name + name_file + '.txt'
+    name_file = folder_name + name_file + '.for_machine.pkl'
 
     with open(name_file, "rb") as fp:  # Pickling
         conf_matrix_dict = pickle.load(fp)
@@ -59,6 +59,14 @@ if __name__ == '__main__':
     for i_act in range(len(activities)):
         print('  %s: %f' % (activities[i_act], accuracies[i_act]))
 
+    if 'roc_auc_macro' in conf_matrix_dict:
+        roc_auc = conf_matrix_dict['roc_auc']
+        print('\nROC-AUC (macro, one-vs-rest, single antenna): %f' % conf_matrix_dict['roc_auc_macro'])
+        print('ROC-AUC (micro, one-vs-rest, single antenna): %f' % conf_matrix_dict['roc_auc_micro'])
+        print('per-activity ROC-AUC (single antenna):')
+        for i_act in range(len(activities)):
+            print('  %s: %f' % (activities[i_act], roc_auc[i_act]))
+
     conf_matrix_max_merge = conf_matrix_dict['conf_matrix_max_merge']
     conf_matrix_max_merge_normaliz_row = np.transpose(conf_matrix_max_merge /
                                                       np.sum(conf_matrix_max_merge, axis=1).reshape(-1, 1))
@@ -71,17 +79,17 @@ if __name__ == '__main__':
     average_max_merge_rec = np.mean(recall_max_merge)
     average_max_merge_f = np.mean(fscore_max_merge)
     print('\n-- FINAL DECISION --')
-    print('max-merge - average accuracy %f, average precision %f, average recall %f, average fscore %f'
+    print('decision-fusion - average accuracy %f, average precision %f, average recall %f, average fscore %f'
           % (accuracy_max_merge, average_max_merge_prec, average_max_merge_rec, average_max_merge_f))
-    print('per-activity fscores (max-merge):')
+    print('per-activity fscores (decision-fusion):')
     for i_act in range(len(activities)):
         print('  %s: %f' % (activities[i_act], fscore_max_merge[i_act]))
-    print('per-activity accuracies (max-merge):')
+    print('per-activity accuracies (decision-fusion):')
     for i_act in range(len(activities)):
         print('  %s: %f' % (activities[i_act], accuracies_max_merge[i_act]))
 
     # performance assessment by changing the number of monitor antennas
-    name_file = folder_name + 'change_number_antennas_' + args.name_file + '.txt'
+    name_file = folder_name + 'change_number_antennas_' + args.name_file + '.for_machine.pkl'
     with open(name_file, "rb") as fp:  # Pickling
         metrics_matrix_dict = pickle.load(fp)
 

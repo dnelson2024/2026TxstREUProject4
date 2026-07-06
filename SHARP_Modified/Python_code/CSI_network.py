@@ -15,14 +15,17 @@
 """
 
 import argparse
+import json
+import glob
 import numpy as np
 import pickle
 from sklearn.metrics import confusion_matrix
 import os
 from SHARP_Modified.Python_code.dataset_utility import create_dataset_single, expand_antennas, load_data_single
 from SHARP_Modified.Python_code.network_utility import *
+from SHARP_Modified.Python_code.plots_utility import plt_loss_curve
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
-from sklearn.ensemble import RandomForestClassifier
+
 
 
 if __name__ == '__main__':
@@ -37,15 +40,32 @@ if __name__ == '__main__':
     parser.add_argument('name_base', help='Name base for the files')
     parser.add_argument('activities', help='Activities to be considered')
     parser.add_argument('--model', help='Model architecture to train (default cnn)', default='cnn',
-                        choices=['cnn', 'cnn_bilstm', 'vit', 'bilstm', 'lstm', 'rcnn', 'random_forest'])
+                        choices=['cnn', 'cnn_bilstm', 'vit', 'bilstm', 'lstm', 'rcnn', 'widar3', 'random_forest', 'svm', 'knn', 'gradient_boosting', 'naive_bayes'])
     parser.add_argument('--bandwidth', help='Bandwidth in [MHz] to select the subcarriers, can be 20, 40, 80 '
                                             '(default 80)', default=80, required=False, type=int)
     parser.add_argument('--sub_band', help='Sub_band idx in [1, 2, 3, 4] for 20 MHz, [1, 2] for 40 MHz '
                                            '(default 1)', default=1, required=False, type=int)
+    parser.add_argument('--learning_rate', help='Adam learning rate for the Keras models (default 0.0001)',
+                        default=0.0001, required=False, type=float)
+    parser.add_argument('--dropout', help='Dropout rate for the Keras models (default: each model\'s builtin '
+                                          'default -- 0.2 for cnn, 0.3 for the others)',
+                        default=None, required=False, type=float)
+    parser.add_argument('--filter_scale', help='Scale factor applied to the cnn reduction block filter counts '
+                                               '(default 1.0)', default=1.0, required=False, type=float)
+    parser.add_argument('--hparams', help='JSON dict of extra model hyperparameters forwarded to the model '
+                                          'builder, e.g. \'{"units": 128, "num_layers": 3}\' for lstm/bilstm or '
+                                          '\'{"C": 10, "gamma": "scale"}\' for svm. Not supported for the cnn '
+                                          '(locked to the original SHARP architecture).',
+                        default='{}', required=False)
     args = parser.parse_args()
+    extra_hparams = json.loads(args.hparams)
 
     gpus = tf.config.experimental.list_physical_devices('GPU')
     print(gpus)
+    # Default TF grabs a small fixed pool up front (fatal OOM on the Inception module's
+    # parallel branches on unified-memory GPUs like GB10); grow allocation on demand instead.
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
 
     bandwidth = args.bandwidth
     sub_band = args.sub_band
@@ -57,18 +77,16 @@ if __name__ == '__main__':
     activities = np.asarray(activities)
 
     name_base = args.name_base
-    if os.path.exists(name_base + '_' + str(csi_act) + '_cache_train.data-00000-of-00001'):
-        os.remove(name_base + '_' + str(csi_act) + '_cache_train.data-00000-of-00001')
-        os.remove(name_base + '_' + str(csi_act) + '_cache_train.index')
-    if os.path.exists(name_base + '_' + str(csi_act) + '_cache_val.data-00000-of-00001'):
-        os.remove(name_base + '_' + str(csi_act) + '_cache_val.data-00000-of-00001')
-        os.remove(name_base + '_' + str(csi_act) + '_cache_val.index')
-    if os.path.exists(name_base + '_' + str(csi_act) + '_cache_train_test.data-00000-of-00001'):
-        os.remove(name_base + '_' + str(csi_act) + '_cache_train_test.data-00000-of-00001')
-        os.remove(name_base + '_' + str(csi_act) + '_cache_train_test.index')
-    if os.path.exists(name_base + '_' + str(csi_act) + '_cache_test.data-00000-of-00001'):
-        os.remove(name_base + '_' + str(csi_act) + '_cache_test.data-00000-of-00001')
-        os.remove(name_base + '_' + str(csi_act) + '_cache_test.index')
+    cache_dir = 'cache'
+    os.makedirs(cache_dir, exist_ok=True)
+    # include the model name so different models (e.g. run back-to-back or overlapping
+    # in run_models_dgx.sh) never share a cache file and race on the same tempstate
+    cache_base = os.path.join(cache_dir, os.path.basename(name_base) + '_' + args.model)
+    # glob-remove (not just the finished .data-*/.index) so a tempstate/lockfile left
+    # behind by a previous interrupted run can't collide with this one
+    for cache_stage in ('train', 'val', 'train_test', 'val_test', 'test', 'test_test'):
+        for stale_file in glob.glob(cache_base + '_' + str(csi_act) + '_cache_' + cache_stage + '*'):
+            os.remove(stale_file)
 
     subdirs_training = args.subdirs  # string
     labels_train = []
@@ -98,7 +116,9 @@ if __name__ == '__main__':
             labels_train.extend(pickle.load(fp))
         name_f = args.dir + sdir + '/files_train_antennas_' + str(csi_act) + suffix
         with open(name_f, "rb") as fp:  # Unpickling
-            all_files_train.extend(pickle.load(fp))
+            # stored paths are baked in from wherever the dataset was created (e.g. a
+            # cluster); re-root them to dir_train so training works from any local copy
+            all_files_train.extend([dir_train + os.path.basename(p) for p in pickle.load(fp)])
 
         dir_val = args.dir + sdir + '/val_antennas_' + str(csi_act) + '/'
         name_labels = args.dir + sdir + '/labels_val_antennas_' + str(csi_act) + suffix
@@ -106,7 +126,7 @@ if __name__ == '__main__':
             labels_val.extend(pickle.load(fp))
         name_f = args.dir + sdir + '/files_val_antennas_' + str(csi_act) + suffix
         with open(name_f, "rb") as fp:  # Unpickling
-            all_files_val.extend(pickle.load(fp))
+            all_files_val.extend([dir_val + os.path.basename(p) for p in pickle.load(fp)])
 
         dir_test = args.dir + sdir + '/test_antennas_' + str(csi_act) + '/'
         name_labels = args.dir + sdir + '/labels_test_antennas_' + str(csi_act) + suffix
@@ -114,7 +134,7 @@ if __name__ == '__main__':
             labels_test.extend(pickle.load(fp))
         name_f = args.dir + sdir + '/files_test_antennas_' + str(csi_act) + suffix
         with open(name_f, "rb") as fp:  # Unpickling
-            all_files_test.extend(pickle.load(fp))
+            all_files_test.extend([dir_test + os.path.basename(p) for p in pickle.load(fp)])
 
     file_train_selected = [all_files_train[idx] for idx in range(len(labels_train)) if labels_train[idx] in
                            labels_considered]
@@ -124,7 +144,7 @@ if __name__ == '__main__':
     file_train_selected_expanded, labels_train_selected_expanded, stream_ant_train = \
         expand_antennas(file_train_selected, labels_train_selected, num_antennas)
 
-    name_cache = name_base + '_' + str(csi_act) + '_cache_train'
+    name_cache = cache_base + '_' + str(csi_act) + '_cache_train'
     dataset_csi_train = create_dataset_single(file_train_selected_expanded, labels_train_selected_expanded,
                                               stream_ant_train, input_network, batch_size,
                                               shuffle=True, cache_file=name_cache)
@@ -137,7 +157,7 @@ if __name__ == '__main__':
     file_val_selected_expanded, labels_val_selected_expanded, stream_ant_val = \
         expand_antennas(file_val_selected, labels_val_selected, num_antennas)
 
-    name_cache_val = name_base + '_' + str(csi_act) + '_cache_val'
+    name_cache_val = cache_base + '_' + str(csi_act) + '_cache_val'
     dataset_csi_val = create_dataset_single(file_val_selected_expanded, labels_val_selected_expanded,
                                             stream_ant_val, input_network, batch_size,
                                             shuffle=False, cache_file=name_cache_val)
@@ -150,7 +170,7 @@ if __name__ == '__main__':
     file_test_selected_expanded, labels_test_selected_expanded, stream_ant_test = \
         expand_antennas(file_test_selected, labels_test_selected, num_antennas)
 
-    name_cache_test = name_base + '_' + str(csi_act) + '_cache_test'
+    name_cache_test = cache_base + '_' + str(csi_act) + '_cache_test'
     dataset_csi_test = create_dataset_single(file_test_selected_expanded, labels_test_selected_expanded,
                                              stream_ant_test, input_network, batch_size,
                                              shuffle=False, cache_file=name_cache_test)
@@ -163,62 +183,73 @@ if __name__ == '__main__':
     test_steps_per_epoch = int(np.ceil(num_samples_test / batch_size))
 
     # ---- Build & train the chosen model; produce per-(single-antenna)-sample scores ----
-    if args.model == 'random_forest':
+    if args.model in SKLEARN_MODELS:
         # sklearn path: flatten each single-antenna Doppler sample into a vector.
         def _materialize(files_exp, streams):
             return np.stack([np.asarray(load_data_single(f, s)).ravel()
                              for f, s in zip(files_exp, streams)])
 
-        x_train_rf = _materialize(file_train_selected_expanded, stream_ant_train)
-        x_val_rf = _materialize(file_val_selected_expanded, stream_ant_val)
-        x_test_rf = _materialize(file_test_selected_expanded, stream_ant_test)
+        x_train_skl = _materialize(file_train_selected_expanded, stream_ant_train)
+        x_val_skl = _materialize(file_val_selected_expanded, stream_ant_val)
+        x_test_skl = _materialize(file_test_selected_expanded, stream_ant_test)
 
-        clf = RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=42)
-        clf.fit(x_train_rf, np.array(labels_train_selected_expanded))
+        clf = build_sklearn_model(args.model, **extra_hparams)
+        clf.fit(x_train_skl, np.array(labels_train_selected_expanded))
 
-        def _proba_full(x_mat):
-            # Map predict_proba columns (clf.classes_) onto the full class range so
-            # the downstream argmax / antenna-merge sees an [N, output_shape] matrix.
-            p = clf.predict_proba(x_mat)
-            full = np.zeros((x_mat.shape[0], output_shape), dtype=float)
-            full[:, clf.classes_.astype(int)] = p
-            return full
-
-        train_prediction_list = _proba_full(x_train_rf)
-        val_prediction_list = _proba_full(x_val_rf)
-        test_prediction_list = _proba_full(x_test_rf)
+        train_prediction_list = sklearn_class_scores(clf, x_train_skl, output_shape)
+        val_prediction_list = sklearn_class_scores(clf, x_val_skl, output_shape)
+        test_prediction_list = sklearn_class_scores(clf, x_test_skl, output_shape)
 
         import joblib
-        joblib.dump(clf, name_base + '_' + str(csi_act) + '_random_forest.joblib')
+        joblib.dump(clf, name_base + '_' + str(csi_act) + '_' + args.model + '.joblib')
     else:
-        csi_model = build_model(args.model, input_network, output_shape)
+        csi_model = build_model(args.model, input_network, output_shape,
+                                dropout=args.dropout, filter_scale=args.filter_scale, **extra_hparams)
         csi_model.summary()
 
-        optimiz = tf.keras.optimizers.Adam(learning_rate=0.0001)
+        optimiz = tf.keras.optimizers.Adam(learning_rate=args.learning_rate)
         loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         csi_model.compile(optimizer=optimiz, loss=loss,
                           metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
         callback_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
-        name_model = name_base + '_' + str(csi_act) + '_' + args.model + '_network.h5'
+        name_model = name_base + '_' + str(csi_act) + '_' + args.model + '_network.keras'
         callback_save = tf.keras.callbacks.ModelCheckpoint(name_model, save_freq='epoch', save_best_only=True,
                                                            monitor='val_sparse_categorical_accuracy')
 
-        csi_model.fit(dataset_csi_train, epochs=25, steps_per_epoch=train_steps_per_epoch,
-                      validation_data=dataset_csi_val, validation_steps=val_steps_per_epoch,
-                      callbacks=[callback_save, callback_stop])
+        history = csi_model.fit(dataset_csi_train, epochs=25, steps_per_epoch=train_steps_per_epoch,
+                                validation_data=dataset_csi_val, validation_steps=val_steps_per_epoch,
+                                callbacks=[callback_save, callback_stop])
         csi_model.save(name_model)
         csi_model = tf.keras.models.load_model(name_model)
 
-        name_cache_train_test = name_base + '_' + str(csi_act) + '_cache_train_test'
+        os.makedirs('./plots', exist_ok=True)
+        plot_name = str(csi_act) + '_' + subdirs_training + '_' + args.model + '_band_' + \
+                   str(bandwidth) + '_subband_' + str(sub_band)
+        plt_loss_curve(history.history, plot_name, model_name=args.model)
+
+        # dataset_csi_val/dataset_csi_test were already read (and truncated mid-write, since
+        # validation_steps stops short of a full pass) during fit() above; re-reading their
+        # on-disk cache here races with that half-finished write and raises NotFoundError.
+        # Build fresh, single-pass, non-repeating datasets for prediction instead -- same
+        # pattern already used for dataset_csi_train_test below.
+        name_cache_train_test = cache_base + '_' + str(csi_act) + '_cache_train_test'
         dataset_csi_train_test = create_dataset_single(file_train_selected_expanded, labels_train_selected_expanded,
                                                        stream_ant_train, input_network, batch_size,
                                                        shuffle=False, cache_file=name_cache_train_test, prefetch=False)
+        name_cache_val_test = cache_base + '_' + str(csi_act) + '_cache_val_test'
+        dataset_csi_val_test = create_dataset_single(file_val_selected_expanded, labels_val_selected_expanded,
+                                                     stream_ant_val, input_network, batch_size,
+                                                     shuffle=False, cache_file=name_cache_val_test, prefetch=False)
+        name_cache_test_test = cache_base + '_' + str(csi_act) + '_cache_test_test'
+        dataset_csi_test_test = create_dataset_single(file_test_selected_expanded, labels_test_selected_expanded,
+                                                      stream_ant_test, input_network, batch_size,
+                                                      shuffle=False, cache_file=name_cache_test_test, prefetch=False)
         train_prediction_list = csi_model.predict(dataset_csi_train_test,
                                                   steps=train_steps_per_epoch)[:num_samples_train]
-        val_prediction_list = csi_model.predict(dataset_csi_val,
+        val_prediction_list = csi_model.predict(dataset_csi_val_test,
                                                 steps=val_steps_per_epoch)[:num_samples_val]
-        test_prediction_list = csi_model.predict(dataset_csi_test,
+        test_prediction_list = csi_model.predict(dataset_csi_test_test,
                                                  steps=test_steps_per_epoch)[:num_samples_test]
 
     # ---- Shared evaluation (identical for every model) ----
@@ -277,8 +308,9 @@ if __name__ == '__main__':
                            'fscore_max_merge': fscore_max_merge}
 
     os.makedirs('./outputs', exist_ok=True)
+    # .for_machine.pkl: binary pickle for CSI_network_metrics(_plot).py, not human-readable
     name_file = './outputs/test_' + str(csi_act) + '_' + subdirs_training + '_' + args.model + '_band_' + \
-                str(bandwidth) + '_subband_' + str(sub_band) + suffix
+                str(bandwidth) + '_subband_' + str(sub_band) + '.for_machine.pkl'
     with open(name_file, "wb") as fp:  # Pickling
         pickle.dump(metrics_matrix_dict, fp)
 
@@ -333,6 +365,6 @@ if __name__ == '__main__':
                            'average_fscore_change_num_ant': average_fscore_change_num_ant}
 
     name_file = './outputs/change_number_antennas_test_' + str(csi_act) + '_' + subdirs_training + '_' + \
-                args.model + '_band_' + str(bandwidth) + '_subband_' + str(sub_band) + '.txt'
+                args.model + '_band_' + str(bandwidth) + '_subband_' + str(sub_band) + '.for_machine.pkl'
     with open(name_file, "wb") as fp:  # Pickling
         pickle.dump(metrics_matrix_dict, fp)

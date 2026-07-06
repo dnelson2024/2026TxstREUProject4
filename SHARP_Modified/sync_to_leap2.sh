@@ -39,4 +39,16 @@ echo "==> slurm/  ->  $REMOTE:$REMOTE_BASE/slurm/"
 rsync "${COMMON[@]}" --exclude 'logs/' \
     "$REPO_DIR/slurm/" "$REMOTE:$REMOTE_BASE/slurm/"
 
+echo "==> package tree for training  ->  $REMOTE:$REMOTE_BASE/SHARP_Modified/Python_code/"
+# The training grid job (slurm/09_train_grid.sh) runs the code as a package
+# (`python -m SHARP_Modified.Python_code.*` with PYTHONPATH=$REMOTE_BASE), so the
+# .py files must ALSO exist in package layout. The flat copy above stays as-is
+# for the older 01-08 preprocessing jobs.
+# rsync only creates the LAST path component, so make the parent tree first.
+if [ ${#DRY[@]} -eq 0 ]; then
+    ssh "$REMOTE" "mkdir -p '$REMOTE_BASE/SHARP_Modified/Python_code'"
+fi
+rsync "${COMMON[@]}" --exclude '*.h5' --exclude '*.keras' --exclude '*.joblib' \
+    "$REPO_DIR/Python_code/" "$REMOTE:$REMOTE_BASE/SHARP_Modified/Python_code/"
+
 echo "Done."

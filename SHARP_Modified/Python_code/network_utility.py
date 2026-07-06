@@ -27,28 +27,30 @@ def conv2d_bn(x_in, filters, kernel_size, strides=(1, 1), padding='same', activa
     return x
 
 
-def reduction_a_block_small(x_in, base_name):
+def reduction_a_block_small(x_in, base_name, filter_scale=1.0):
     x1 = tf.keras.layers.MaxPool2D((2, 2), strides=(2, 2), padding='valid')(x_in)
 
-    x2 = conv2d_bn(x_in, 5, (2, 2), strides=(2, 2), padding='valid', name=base_name + 'conv2_1_res_a')
+    f2 = max(1, round(5 * filter_scale))
+    x2 = conv2d_bn(x_in, f2, (2, 2), strides=(2, 2), padding='valid', name=base_name + 'conv2_1_res_a')
 
-    x3 = conv2d_bn(x_in, 3, (1, 1), name=base_name + 'conv3_1_res_a')
-    x3 = conv2d_bn(x3, 6, (2, 2), name=base_name + 'conv3_2_res_a')
-    x3 = conv2d_bn(x3, 9, (4, 4), strides=(2, 2), padding='same', name=base_name + 'conv3_3_res_a')
+    f3a, f3b, f3c = (max(1, round(n * filter_scale)) for n in (3, 6, 9))
+    x3 = conv2d_bn(x_in, f3a, (1, 1), name=base_name + 'conv3_1_res_a')
+    x3 = conv2d_bn(x3, f3b, (2, 2), name=base_name + 'conv3_2_res_a')
+    x3 = conv2d_bn(x3, f3c, (4, 4), strides=(2, 2), padding='same', name=base_name + 'conv3_3_res_a')
 
     x4 = tf.keras.layers.Concatenate()([x1, x2, x3])
     return x4
 
 
-def csi_network_inc_res(input_sh, output_sh):
+def csi_network_inc_res(input_sh, output_sh, dropout=0.2, filter_scale=1.0):
     x_input = tf.keras.Input(input_sh)
 
-    x2 = reduction_a_block_small(x_input, base_name='1st')
+    x2 = reduction_a_block_small(x_input, base_name='1st', filter_scale=filter_scale)
 
     x3 = conv2d_bn(x2, 3, (1, 1), name='conv4')
 
     x = tf.keras.layers.Flatten()(x3)
-    x = tf.keras.layers.Dropout(0.2)(x)
+    x = tf.keras.layers.Dropout(dropout)(x)
     x = tf.keras.layers.Dense(output_sh, activation=None, name='dense2')(x)
     model = tf.keras.Model(inputs=x_input, outputs=x, name='csi_model')
     return model
@@ -64,16 +66,23 @@ def csi_network_inc_res(input_sh, output_sh):
 # ============================================================================
 
 
+@tf.keras.utils.register_keras_serializable(package='SHARP')
 class _AddPositionEmbedding(tf.keras.layers.Layer):
     """Learned positional embedding added to a (batch, n_patches, dim) tensor."""
     def __init__(self, n_patches, dim, **kwargs):
         super().__init__(**kwargs)
         self.n_patches = n_patches
+        self.dim = dim
         self.pos = tf.keras.layers.Embedding(input_dim=n_patches, output_dim=dim)
 
     def call(self, x):
         positions = tf.range(start=0, limit=self.n_patches, delta=1)
         return x + self.pos(positions)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'n_patches': self.n_patches, 'dim': self.dim})
+        return config
 
 
 def _to_time_sequence(x_in):
@@ -82,66 +91,83 @@ def _to_time_sequence(x_in):
     return tf.keras.layers.Reshape((t, -1))(x_in)
 
 
-def build_cnn(input_sh, output_sh):
+def build_cnn(input_sh, output_sh, dropout=0.2, filter_scale=1.0):
     # The original SHARP Inception-ResNet CNN (kept as the default 'cnn').
-    return csi_network_inc_res(input_sh, output_sh)
+    return csi_network_inc_res(input_sh, output_sh, dropout=dropout, filter_scale=filter_scale)
 
 
-def build_lstm(input_sh, output_sh):
+def build_lstm(input_sh, output_sh, dropout=0.3, units=64, num_layers=2, recurrent_dropout=0.0):
+    # NOTE: recurrent_dropout > 0 disables the cuDNN fast path -> much slower on GPU.
     x_in = tf.keras.Input(input_sh)
     x = _to_time_sequence(x_in)
-    x = tf.keras.layers.LSTM(64, return_sequences=True)(x)
-    x = tf.keras.layers.LSTM(64)(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
+    for i in range(num_layers):
+        x = tf.keras.layers.LSTM(units, return_sequences=(i < num_layers - 1),
+                                 recurrent_dropout=recurrent_dropout)(x)
+    x = tf.keras.layers.Dropout(dropout)(x)
     x = tf.keras.layers.Dense(output_sh, activation=None)(x)
     return tf.keras.Model(x_in, x, name='lstm')
 
 
-def build_bilstm(input_sh, output_sh):
+def build_bilstm(input_sh, output_sh, dropout=0.3, units=64, num_layers=2, recurrent_dropout=0.0,
+                 merge_mode='concat'):
     x_in = tf.keras.Input(input_sh)
     x = _to_time_sequence(x_in)
-    x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True))(x)
-    x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64))(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
+    for i in range(num_layers):
+        x = tf.keras.layers.Bidirectional(
+            tf.keras.layers.LSTM(units, return_sequences=(i < num_layers - 1),
+                                 recurrent_dropout=recurrent_dropout),
+            merge_mode=merge_mode)(x)
+    x = tf.keras.layers.Dropout(dropout)(x)
     x = tf.keras.layers.Dense(output_sh, activation=None)(x)
     return tf.keras.Model(x_in, x, name='bilstm')
 
 
-def _conv_front_end(x_in):
+def _conv_front_end(x_in, num_filters=(16, 32), kernel_size=(3, 3), pool_size=2):
     """Conv feature extractor that POOLS ONLY the feature axis, keeping the time
     axis intact so it can feed a recurrent layer as a per-timestep sequence."""
-    x = tf.keras.layers.Conv2D(16, (3, 3), padding='same', activation='relu')(x_in)
-    x = tf.keras.layers.MaxPool2D((1, 2))(x)
-    x = tf.keras.layers.Conv2D(32, (3, 3), padding='same', activation='relu')(x)
-    x = tf.keras.layers.MaxPool2D((1, 2))(x)
-    # (T, F', 32) -> (T, F'*32)
+    x = x_in
+    for filters in num_filters:
+        x = tf.keras.layers.Conv2D(filters, tuple(kernel_size), padding='same', activation='relu')(x)
+        x = tf.keras.layers.MaxPool2D((1, pool_size))(x)
+    # (T, F', C') -> (T, F'*C')
     t, f, c = x.shape[1], x.shape[2], x.shape[3]
     x = tf.keras.layers.Reshape((t, f * c))(x)
     return x
 
 
-def build_cnn_bilstm(input_sh, output_sh):
+def build_cnn_bilstm(input_sh, output_sh, dropout=0.3, num_filters=(16, 32), kernel_size=(3, 3),
+                     pool_size=2, units=64, num_layers=2, merge_mode='concat', dense_units=0):
     x_in = tf.keras.Input(input_sh)
-    x = _conv_front_end(x_in)
-    x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True))(x)
-    x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64))(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
+    x = _conv_front_end(x_in, num_filters=num_filters, kernel_size=kernel_size, pool_size=pool_size)
+    for i in range(num_layers):
+        x = tf.keras.layers.Bidirectional(
+            tf.keras.layers.LSTM(units, return_sequences=(i < num_layers - 1)),
+            merge_mode=merge_mode)(x)
+    if dense_units:
+        x = tf.keras.layers.Dense(dense_units, activation='relu')(x)
+    x = tf.keras.layers.Dropout(dropout)(x)
     x = tf.keras.layers.Dense(output_sh, activation=None)(x)
     return tf.keras.Model(x_in, x, name='cnn_bilstm')
 
 
-def build_rcnn(input_sh, output_sh):
+def build_rcnn(input_sh, output_sh, dropout=0.3, num_filters=(16, 32), kernel_size=(3, 3),
+               pool_size=2, units=64, num_layers=2):
     # Recurrent-CNN (CRNN): conv feature extractor + UNIdirectional LSTM.
     x_in = tf.keras.Input(input_sh)
-    x = _conv_front_end(x_in)
-    x = tf.keras.layers.LSTM(64, return_sequences=True)(x)
-    x = tf.keras.layers.LSTM(64)(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
+    x = _conv_front_end(x_in, num_filters=num_filters, kernel_size=kernel_size, pool_size=pool_size)
+    for i in range(num_layers):
+        x = tf.keras.layers.LSTM(units, return_sequences=(i < num_layers - 1))(x)
+    x = tf.keras.layers.Dropout(dropout)(x)
     x = tf.keras.layers.Dense(output_sh, activation=None)(x)
     return tf.keras.Model(x_in, x, name='rcnn')
 
 
-def build_vit(input_sh, output_sh, patch=(10, 10), dim=64, depth=4, heads=4, mlp_dim=128):
+def build_vit(input_sh, output_sh, patch=(10, 10), dim=64, depth=4, heads=4, mlp_dim=None,
+              mlp_ratio=2.0, dropout=0.3, attention_dropout=0.0):
+    # mlp_dim=None derives the feedforward width from mlp_ratio (original default:
+    # dim=64 * 2.0 = 128, identical to the previous hardcoded mlp_dim=128).
+    if mlp_dim is None:
+        mlp_dim = int(dim * mlp_ratio)
     x_in = tf.keras.Input(input_sh)
     # Patch embedding via a strided conv (valid padding floors non-divisible dims).
     ph = min(patch[0], input_sh[0])
@@ -152,7 +178,8 @@ def build_vit(input_sh, output_sh, patch=(10, 10), dim=64, depth=4, heads=4, mlp
     x = _AddPositionEmbedding(n_patches, dim)(x)
     for _ in range(depth):
         y = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
-        y = tf.keras.layers.MultiHeadAttention(num_heads=heads, key_dim=dim // heads)(y, y)
+        y = tf.keras.layers.MultiHeadAttention(num_heads=heads, key_dim=dim // heads,
+                                               dropout=attention_dropout)(y, y)
         x = tf.keras.layers.Add()([x, y])
         y = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
         y = tf.keras.layers.Dense(mlp_dim, activation='gelu')(y)
@@ -160,9 +187,40 @@ def build_vit(input_sh, output_sh, patch=(10, 10), dim=64, depth=4, heads=4, mlp
         x = tf.keras.layers.Add()([x, y])
     x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
     x = tf.keras.layers.GlobalAveragePooling1D()(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
+    x = tf.keras.layers.Dropout(dropout)(x)
     x = tf.keras.layers.Dense(output_sh, activation=None)(x)
     return tf.keras.Model(x_in, x, name='vit')
+
+
+def build_widar3(input_sh, output_sh, frame_len=10, conv_filters=16, kernel_size=(5, 5),
+                 pool_size=(2, 2), dense_units=64, gru_units=128, dropout=0.5):
+    """Port of the Widar3.0 recognition DNN (Widar3.0/DNN_Model/widar3_keras.py):
+    a per-frame CNN encoder (Conv2D -> MaxPool -> Flatten -> Dense -> Dropout -> Dense)
+    followed by a GRU over the frame sequence. Widar3.0 consumes [T,20,20,1] BVP
+    frames; SHARP provides one [340,100,1] Doppler spectrogram per antenna, so
+    consecutive frame_len-step slices of the spectrogram serve as the "frames":
+    (340,100,1) -> (34, 10, 100, 1) with the default frame_len=10.
+    Defaults follow the original: 16 conv filters @5x5, pool 2x2, dense 64,
+    GRU 128, dropout 0.5. (Trainer differs from the original script: Adam +
+    logits/SparseCategoricalCrossentropy, the shared setup of this pipeline,
+    instead of RMSprop + softmax/categorical_crossentropy.)"""
+    t, f, c = input_sh
+    if t % frame_len:
+        raise ValueError('frame_len %d must divide the %d time steps' % (frame_len, t))
+    n_frames = t // frame_len
+    td = tf.keras.layers.TimeDistributed
+    x_in = tf.keras.Input(input_sh)
+    x = tf.keras.layers.Reshape((n_frames, frame_len, f, c))(x_in)
+    x = td(tf.keras.layers.Conv2D(conv_filters, tuple(kernel_size), activation='relu'))(x)
+    x = td(tf.keras.layers.MaxPooling2D(tuple(pool_size)))(x)
+    x = td(tf.keras.layers.Flatten())(x)
+    x = td(tf.keras.layers.Dense(dense_units, activation='relu'))(x)
+    x = td(tf.keras.layers.Dropout(dropout))(x)
+    x = td(tf.keras.layers.Dense(dense_units, activation='relu'))(x)
+    x = tf.keras.layers.GRU(gru_units, return_sequences=False)(x)
+    x = tf.keras.layers.Dropout(dropout)(x)
+    x = tf.keras.layers.Dense(output_sh, activation=None)(x)
+    return tf.keras.Model(x_in, x, name='widar3')
 
 
 # Keras builders keyed by --model value. 'random_forest' is handled separately
@@ -174,11 +232,102 @@ KERAS_MODEL_BUILDERS = {
     'bilstm': build_bilstm,
     'lstm': build_lstm,
     'rcnn': build_rcnn,
+    'widar3': build_widar3,
 }
 
 
-def build_model(model_name, input_sh, output_sh):
+def build_model(model_name, input_sh, output_sh, dropout=None, filter_scale=1.0, **hparams):
     if model_name not in KERAS_MODEL_BUILDERS:
         raise ValueError('Unknown Keras model %r. Options: %s'
                          % (model_name, list(KERAS_MODEL_BUILDERS)))
-    return KERAS_MODEL_BUILDERS[model_name](input_sh, output_sh)
+    # The cnn is the original SHARP architecture and stays EXACTLY as published --
+    # no extra hyperparameters beyond dropout/filter_scale are accepted for it.
+    if model_name == 'cnn' and hparams:
+        raise ValueError('The cnn architecture is locked to the original SHARP design; '
+                         '--hparams is not supported for it (got %r)' % sorted(hparams))
+    # dropout=None keeps each builder's own default (0.2 for cnn, 0.3 for the rest);
+    # filter_scale only exists for the cnn architecture.
+    kwargs = dict(hparams)
+    if dropout is not None:
+        kwargs['dropout'] = dropout
+    if model_name == 'cnn':
+        kwargs['filter_scale'] = filter_scale
+    return KERAS_MODEL_BUILDERS[model_name](input_sh, output_sh, **kwargs)
+
+
+# ============================================================================
+# Classical (scikit-learn) models. These operate on the flattened single-antenna
+# Doppler window (340*100 = 34,000 values). random_forest handles that raw
+# dimensionality fine; the others get a StandardScaler+PCA(128) front end inside
+# the pipeline (fit on train only) or they would be intractably slow / poor in
+# 34k dimensions.
+# ============================================================================
+
+SKLEARN_MODELS = ('random_forest', 'svm', 'knn', 'gradient_boosting', 'naive_bayes')
+
+
+def build_sklearn_model(model_name, **hparams):
+    """hparams are forwarded to the classifier's constructor (sklearn's own names:
+    random_forest n_estimators/max_depth/min_samples_split/min_samples_leaf/max_features,
+    svm C/kernel/gamma/degree, knn n_neighbors/weights/metric/p,
+    gradient_boosting n_estimators/learning_rate/max_depth/l2_regularization,
+    naive_bayes var_smoothing). 'pca_components' tunes the PCA front end
+    (svm/knn/gradient_boosting/naive_bayes only)."""
+    from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
+    from sklearn.svm import SVC
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.naive_bayes import GaussianNB
+    from sklearn.decomposition import PCA
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+
+    pca_components = hparams.pop('pca_components', None)
+    if model_name == 'random_forest':
+        if pca_components is not None:
+            raise ValueError('random_forest runs on the raw features (no PCA front end)')
+        params = dict(n_estimators=200, n_jobs=-1, random_state=42)
+        params.update(hparams)
+        return RandomForestClassifier(**params)
+    if pca_components is None:
+        pca_components = 128
+    if model_name == 'svm':
+        # no probability=True (5x slower); decision_function margins get
+        # softmaxed in sklearn_class_scores instead.
+        params = dict(kernel='rbf', random_state=42)
+        params.update(hparams)
+        return make_pipeline(StandardScaler(), PCA(n_components=pca_components, random_state=42),
+                             SVC(**params))
+    if model_name == 'knn':
+        params = dict(n_neighbors=5, n_jobs=-1)
+        params.update(hparams)
+        return make_pipeline(StandardScaler(), PCA(n_components=pca_components, random_state=42),
+                             KNeighborsClassifier(**params))
+    if model_name == 'gradient_boosting':
+        if 'n_estimators' in hparams:  # sklearn's HistGB calls it max_iter
+            hparams['max_iter'] = hparams.pop('n_estimators')
+        params = dict(random_state=42)
+        params.update(hparams)
+        return make_pipeline(PCA(n_components=pca_components, random_state=42),
+                             HistGradientBoostingClassifier(**params))
+    if model_name == 'naive_bayes':
+        return make_pipeline(PCA(n_components=pca_components, random_state=42), GaussianNB(**hparams))
+    raise ValueError('Unknown sklearn model %r. Options: %s' % (model_name, list(SKLEARN_MODELS)))
+
+
+def sklearn_class_scores(clf, x_mat, n_classes):
+    """[N, n_classes] score matrix for the antenna-fusion/argmax evaluation:
+    predict_proba when the model has it, else softmaxed decision_function margins.
+    Columns are mapped through clf.classes_ so missing classes stay zero."""
+    import numpy as np
+    if hasattr(clf, 'predict_proba'):
+        p = clf.predict_proba(x_mat)
+    else:
+        d = clf.decision_function(x_mat)
+        if d.ndim == 1:
+            d = np.stack([-d, d], axis=1)
+        d = d - d.max(axis=1, keepdims=True)
+        p = np.exp(d)
+        p /= p.sum(axis=1, keepdims=True)
+    full = np.zeros((x_mat.shape[0], n_classes), dtype=float)
+    full[:, clf.classes_.astype(int)] = p
+    return full
