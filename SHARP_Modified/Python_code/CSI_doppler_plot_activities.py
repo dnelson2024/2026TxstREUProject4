@@ -3,8 +3,7 @@ import argparse
 import numpy as np
 import pickle
 from os import listdir
-from SHARP_Modified.Python_code.plots_utility import plt_fft_doppler_activities, plt_fft_doppler_activities_compact, \
-    plt_fft_doppler_activity_single, plt_fft_doppler_activities_compact_2
+from SHARP_Modified.Python_code.plots_utility import plt_fft_doppler_activities, plt_fft_doppler_activity_single
 
 
 if __name__ == '__main__':
@@ -67,22 +66,6 @@ if __name__ == '__main__':
     delta_v = round(v_light / (Tc * fc * feature_length), 3)
     antenna = 0
     plt_fft_doppler_activities(traces_activities, antenna, activities, sliding, delta_v, name_p)
-
-    name_p = './plots/csi_doppler_activities_' + '_' + args.sub_dir + '_compact.pdf'
-    plt_fft_doppler_activities_compact(traces_activities, antenna, activities, sliding, delta_v, name_p)
-
-    # These two plots assume the classic 5-class layout (E,L,W,R,J). Guard them so
-    # a different class count degrades gracefully instead of IndexError-ing.
-    # list(...) makes a COPY so `del ...[2]` doesn't also shrink traces_activities.
-    if len(traces_activities) > 2:
-        traces_activities_reduced = list(traces_activities)
-        del traces_activities_reduced[2]
-        name_p = './plots/csi_doppler_activities_' + '_' + args.sub_dir + '_compact_2.pdf'
-        plt_fft_doppler_activities_compact_2(traces_activities_reduced, antenna,
-                                             np.asarray(['empty', 'sitting', 'running', 'jumping']),
-                                             sliding, delta_v, name_p)
-    else:
-        print('Skipping compact_2 plot: need >2 activities, have %d' % len(traces_activities))
 
     name_p = './plots/csi_doppler_single_act.pdf'
     antenna = 1

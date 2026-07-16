@@ -25,7 +25,7 @@ from SHARP_Modified.Python_code.dataset_utility import create_dataset_single, ex
 # layers (e.g. _AddPositionEmbedding for the vit model) before load_model() runs
 from SHARP_Modified.Python_code.network_utility import SKLEARN_MODELS, sklearn_class_scores
 from tensorflow.keras.models import load_model
-from sklearn.metrics import precision_recall_fscore_support, accuracy_score, roc_curve, auc
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score, roc_curve, auc, log_loss
 from sklearn.preprocessing import label_binarize
 import tensorflow as tf
 
@@ -41,11 +41,15 @@ if __name__ == '__main__':
     parser.add_argument('name_base', help='Name base for the files')
     parser.add_argument('activities', help='Activities to be considered')
     parser.add_argument('--model', help='Model architecture to load (must match training)', default='cnn',
-                        choices=['cnn', 'cnn_bilstm', 'vit', 'bilstm', 'lstm', 'rcnn', 'widar3', 'random_forest', 'svm', 'knn', 'gradient_boosting', 'naive_bayes'])
+                        choices=['cnn', 'cnn_bilstm', 'vit', 'bilstm', 'lstm', 'rcnn', 'widar3', 'cnn_tuned', 'widar3_tuned', 'random_forest', 'svm', 'knn', 'gradient_boosting', 'naive_bayes', 'resnet18', 'ensemble'])
     parser.add_argument('--bandwidth', help='Bandwidth in [MHz] to select the subcarriers, can be 20, 40, 80 '
                                             '(default 80)', default=80, required=False, type=int)
     parser.add_argument('--sub_band', help='Sub_band idx in [1, 2, 3, 4] for 20 MHz, [1, 2] for 40 MHz '
                                            '(default 1)', default=1, required=False, type=int)
+    parser.add_argument('--ensemble_models', help='comma-separated member models for --model ensemble',
+                        default='rcnn,cnn_bilstm,bilstm')
+    parser.add_argument('--grouping', choices=['none', 'presence', 'motion'], default='none',
+                        help='evaluate a model trained with the same grouped binary labels')
     args = parser.parse_args()
 
     gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -63,6 +67,10 @@ if __name__ == '__main__':
     for lab_act in csi_act.split(','):
         activities.append(lab_act)
     activities = np.asarray(activities)
+    GROUPINGS = {'presence': ((0, 1, 1, 1, 1), ('empty', 'occupied')),
+                 'motion': ((0, 0, 1, 1, 1), ('stationary', 'dynamic'))}
+    group_map, grouped_names = GROUPINGS.get(args.grouping, (None, None))
+    csi_act_out = str(csi_act) + ('' if group_map is None else '-' + args.grouping)
 
     suffix = '.txt'
 
@@ -74,7 +82,7 @@ if __name__ == '__main__':
     cache_base = os.path.join(cache_dir, os.path.basename(name_base) + '_' + args.model)
     # glob-remove (not just the finished .data-*/.index) so a tempstate/lockfile left
     # behind by a previous interrupted run can't collide with this one
-    for stale_file in glob.glob(cache_base + '_' + str(csi_act) + '_cache_complete*'):
+    for stale_file in glob.glob(cache_base + '_' + csi_act_out + '_cache_complete*'):
         os.remove(stale_file)
 
     subdirs_complete = args.subdirs  # string
@@ -107,13 +115,18 @@ if __name__ == '__main__':
                               labels_considered]
     labels_complete_selected = [labels_complete[idx] for idx in range(len(labels_complete)) if labels_complete[idx] in
                                 labels_considered]
+    if group_map:
+        labels_complete_selected = [group_map[l] for l in labels_complete_selected]
+        output_shape = len(grouped_names)
+        labels_considered = np.arange(output_shape)
+        activities = np.asarray(grouped_names)
 
     file_complete_selected_expanded, labels_complete_selected_expanded, stream_ant_complete = \
         expand_antennas(file_complete_selected, labels_complete_selected, num_antennas)
 
     dataset_csi_complete = create_dataset_single(file_complete_selected_expanded, labels_complete_selected_expanded,
                                                  stream_ant_complete, input_network, batch_size, shuffle=False,
-                                                 cache_file=cache_base + '_' + str(csi_act) + '_cache_complete')
+                                                 cache_file=cache_base + '_' + csi_act_out + '_cache_complete')
 
     num_samples_complete = len(file_complete_selected_expanded)
     complete_steps_per_epoch = int(np.ceil(num_samples_complete / batch_size))
@@ -122,12 +135,24 @@ if __name__ == '__main__':
     # ---- Load the chosen trained model and score every single-antenna sample ----
     if args.model in SKLEARN_MODELS:
         import joblib
-        clf = joblib.load(name_base + '_' + str(csi_act) + '_' + args.model + '.joblib')
+        clf = joblib.load(name_base + '_' + csi_act_out + '_' + args.model + '.joblib')
         x_complete_skl = np.stack([np.asarray(load_data_single(f, s)).ravel()
                                    for f, s in zip(file_complete_selected_expanded, stream_ant_complete)])
         complete_prediction_list = sklearn_class_scores(clf, x_complete_skl, output_shape)
+    elif args.model == 'ensemble':
+        # Average the SOFTMAX probabilities of the member networks (logits from
+        # different nets are not on a common scale, so softmax first).
+        probs = []
+        for member in args.ensemble_models.split(','):
+            net = load_model(name_base + '_' + csi_act_out + '_' + member + '_network.keras')
+            logits = net.predict(dataset_csi_complete,
+                                 steps=complete_steps_per_epoch)[:num_samples_complete]
+            e = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+            probs.append(e / np.sum(e, axis=1, keepdims=True))
+            print('ensemble member %s scored' % member)
+        complete_prediction_list = np.mean(probs, axis=0)
     else:
-        name_model = name_base + '_' + str(csi_act) + '_' + args.model + '_network.keras'
+        name_model = name_base + '_' + csi_act_out + '_' + args.model + '_network.keras'
         csi_model = load_model(name_model)
         complete_prediction_list = csi_model.predict(dataset_csi_complete,
                                                      steps=complete_steps_per_epoch)[:num_samples_complete]
@@ -141,8 +166,8 @@ if __name__ == '__main__':
     accuracy = accuracy_score(complete_labels_true, complete_labels_pred)
 
     # ---- ROC / AUC (one-vs-rest per activity, single-antenna scores) ----
-    if args.model in SKLEARN_MODELS:
-        complete_proba = complete_prediction_list  # already probabilities (sklearn_class_scores)
+    if args.model in SKLEARN_MODELS or args.model == 'ensemble':
+        complete_proba = complete_prediction_list  # already probabilities
     else:
         # Keras model outputs raw logits (from_logits=True); ROC/AUC need probabilities.
         logits = complete_prediction_list
@@ -192,8 +217,14 @@ if __name__ == '__main__':
         precision_recall_fscore_support(labels_true_merge, pred_max_merge, labels=labels_considered)
     accuracy_max_merge = accuracy_score(labels_true_merge, pred_max_merge)
 
+    # per-single-antenna cross-entropy on the test probabilities (pairs with
+    # accuracy_single/fscore_single; the max-merge fusion is a hard vote with no
+    # probability distribution, so there is no matching fusion loss)
+    loss_single = float(log_loss(complete_labels_true, complete_proba, labels=labels_considered))
+
     metrics_matrix_dict = {'conf_matrix': conf_matrix,
                            'accuracy_single': accuracy,
+                           'loss_single': loss_single,
                            'precision_single': precision,
                            'recall_single': recall,
                            'fscore_single': fscore,
@@ -212,7 +243,7 @@ if __name__ == '__main__':
 
     os.makedirs('./outputs', exist_ok=True)
     # .for_machine.pkl: binary pickle for CSI_network_metrics(_plot).py, not human-readable
-    name_file = './outputs/complete_different_' + str(csi_act) + '_' + subdirs_complete + '_' + args.model + \
+    name_file = './outputs/complete_different_' + csi_act_out + '_' + subdirs_complete + '_' + args.model + \
                 '_band_' + str(bandwidth) + '_subband_' + str(sub_band) + '.for_machine.pkl'
     with open(name_file, "wb") as fp:  # Pickling
         pickle.dump(metrics_matrix_dict, fp)
@@ -270,7 +301,7 @@ if __name__ == '__main__':
     metrics_matrix_dict = {'average_accuracy_change_num_ant': average_accuracy_change_num_ant,
                            'average_fscore_change_num_ant': average_fscore_change_num_ant}
 
-    name_file = './outputs/change_number_antennas_complete_different_' + str(csi_act) + '_' + subdirs_complete + \
+    name_file = './outputs/change_number_antennas_complete_different_' + csi_act_out + '_' + subdirs_complete + \
                 '_' + args.model + '_band_' + str(bandwidth) + '_subband_' + str(sub_band) + '.for_machine.pkl'
     with open(name_file, "wb") as fp:  # Pickling
         pickle.dump(metrics_matrix_dict, fp)

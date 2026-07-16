@@ -34,11 +34,9 @@ rcParams['font.size'] = 16
 
 
 def _savefig_both(basename):
-    """Save the current figure as both PDF and PNG, sorted into plots/pdfs/ and
-    plots/pngs/ instead of dumping every format into a single flat plots/ folder."""
-    os.makedirs('./plots/pdfs', exist_ok=True)
+    """Save the current figure as a PNG under plots/pngs/. (PDF output was dropped --
+    png-only keeps the plot folders smaller; the name is kept for its call sites.)"""
     os.makedirs('./plots/pngs', exist_ok=True)
-    plt.savefig('./plots/pdfs/' + basename + '.pdf', bbox_inches='tight')
     plt.savefig('./plots/pngs/' + basename + '.png', bbox_inches='tight', dpi=200)
 
 
@@ -703,7 +701,7 @@ def plt_fft_doppler_activities(doppler_spectrum_list, antenna, csi_label_dict, s
     heights = [1]
     gs = fig.add_gridspec(ncols=6, nrows=1, width_ratios=widths, height_ratios=heights)
     step = 20
-    step_x = 5
+    step_x = 3
     ax = []
     for a_i in range(5):
         act = doppler_spectrum_list[a_i][antenna]
@@ -720,7 +718,7 @@ def plt_fft_doppler_activities(doppler_spectrum_list, antenna, csi_label_dict, s
         ax1.set_yticks(ticks_y + 0.5)
         ax1.set_yticklabels(np.round((ticks_y - length_v) * delta_v, 2))
         ax1.set_xticks(ticks_x)
-        ax1.set_xticklabels(np.round(ticks_x * sliding_lenght * 6e-3, 2))
+        ax1.set_xticklabels(np.round(ticks_x * sliding_lenght * 6e-3, 1), fontsize=8)
 
         title_p = csi_label_dict[a_i]
         ax1.set_title(title_p)
@@ -744,7 +742,7 @@ def plt_fft_doppler_activities_compact(doppler_spectrum_list, antenna, csi_label
     heights = [1, 1]
     gs = fig.add_gridspec(ncols=7, nrows=2, width_ratios=widths, height_ratios=heights)
     step = 20
-    step_x = 5
+    step_x = 3
     ax = []
     list_plts_pos_row = [0, 0, 1, 1, 1]
     list_plts_pos_col_start = [1, 3, 0, 2, 4]
@@ -768,7 +766,7 @@ def plt_fft_doppler_activities_compact(doppler_spectrum_list, antenna, csi_label
             ax1.set_yticklabels([])
             ax1.set_ylabel('')
         ax1.set_xticks(ticks_x)
-        ax1.set_xticklabels(np.round(ticks_x * sliding_lenght * 6e-3, 2))
+        ax1.set_xticklabels(np.round(ticks_x * sliding_lenght * 6e-3, 1), fontsize=8)
 
         title_p = csi_label_dict[a_i]
         ax1.set_title(title_p)
@@ -791,7 +789,7 @@ def plt_fft_doppler_activities_compact_2(doppler_spectrum_list, antenna, csi_lab
     heights = [1, 1]
     gs = fig.add_gridspec(ncols=3, nrows=2, width_ratios=widths, height_ratios=heights)
     step = 20
-    step_x = 5
+    step_x = 3
     ax = []
     list_plts_pos_row = [0, 0, 1, 1]
     list_plts_pos_col = [0, 1, 0, 1]
@@ -814,7 +812,7 @@ def plt_fft_doppler_activities_compact_2(doppler_spectrum_list, antenna, csi_lab
             ax1.set_yticklabels([])
             ax1.set_ylabel('')
         ax1.set_xticks(ticks_x)
-        ax1.set_xticklabels(np.round(ticks_x * sliding_lenght * 6e-3, 2))
+        ax1.set_xticklabels(np.round(ticks_x * sliding_lenght * 6e-3, 1), fontsize=8)
 
         title_p = csi_label_dict[a_i]
         ax1.set_title(title_p)
@@ -833,7 +831,7 @@ def plt_fft_doppler_activity_single(input_a, antenna, sliding_lenght, delta_v, n
     fig = plt.figure(constrained_layout=True)
     fig.set_size_inches(3, 3)
     step = 20
-    step_x = 5
+    step_x = 3
     act = input_a[antenna][:340, :]
     length_v = mt.floor(act.shape[1] / 2)
     factor_v = step * (mt.floor(length_v / step))
@@ -848,7 +846,7 @@ def plt_fft_doppler_activity_single(input_a, antenna, sliding_lenght, delta_v, n
     ax1.set_yticks(ticks_y + 0.5)
     ax1.set_yticklabels(np.round((ticks_y - length_v) * delta_v, 2))
     ax1.set_xticks(ticks_x)
-    ax1.set_xticklabels(np.round(ticks_x * sliding_lenght * 6e-3, 1))
+    ax1.set_xticklabels(np.round(ticks_x * sliding_lenght * 6e-3, 1), fontsize=8)
 
     plt.savefig(name_plot, bbox_inches='tight')
     plt.close()

@@ -39,14 +39,21 @@ if __name__ == '__main__':
     parser.add_argument('num_tot', help='Number of antenna * number of spatial streams', type=int)
     parser.add_argument('name_base', help='Name base for the files')
     parser.add_argument('activities', help='Activities to be considered')
+    parser.add_argument('--grouping', choices=['none', 'presence', 'motion'], default='none',
+                        help='train on grouped binary labels: presence = E vs occupied, '
+                             'motion = stationary (E,L) vs dynamic (W,R,J)')
     parser.add_argument('--model', help='Model architecture to train (default cnn)', default='cnn',
-                        choices=['cnn', 'cnn_bilstm', 'vit', 'bilstm', 'lstm', 'rcnn', 'widar3', 'random_forest', 'svm', 'knn', 'gradient_boosting', 'naive_bayes'])
+                        choices=['cnn', 'cnn_bilstm', 'vit', 'bilstm', 'lstm', 'rcnn', 'widar3', 'cnn_tuned', 'widar3_tuned', 'random_forest', 'svm', 'knn', 'gradient_boosting', 'naive_bayes', 'resnet18'])
     parser.add_argument('--bandwidth', help='Bandwidth in [MHz] to select the subcarriers, can be 20, 40, 80 '
                                             '(default 80)', default=80, required=False, type=int)
     parser.add_argument('--sub_band', help='Sub_band idx in [1, 2, 3, 4] for 20 MHz, [1, 2] for 40 MHz '
                                            '(default 1)', default=1, required=False, type=int)
     parser.add_argument('--learning_rate', help='Adam learning rate for the Keras models (default 0.0001)',
                         default=0.0001, required=False, type=float)
+    parser.add_argument('--epochs', help='Number of training epochs for the Keras models (default 25). '
+                                         'Ignored by the sklearn models (random_forest, svm, knn, '
+                                         'gradient_boosting, naive_bayes).',
+                        default=25, required=False, type=int)
     parser.add_argument('--dropout', help='Dropout rate for the Keras models (default: each model\'s builtin '
                                           'default -- 0.2 for cnn, 0.3 for the others)',
                         default=None, required=False, type=float)
@@ -75,6 +82,12 @@ if __name__ == '__main__':
     for lab_act in csi_act.split(','):
         activities.append(lab_act)
     activities = np.asarray(activities)
+    # binary regrouping of the activity labels (files/caches get a distinct
+    # '-<grouping>' tag so nothing collides with the 5-class results)
+    GROUPINGS = {'presence': ((0, 1, 1, 1, 1), ('empty', 'occupied')),
+                 'motion': ((0, 0, 1, 1, 1), ('stationary', 'dynamic'))}
+    group_map, grouped_names = GROUPINGS.get(args.grouping, (None, None))
+    csi_act_out = str(csi_act) + ('' if group_map is None else '-' + args.grouping)
 
     name_base = args.name_base
     cache_dir = 'cache'
@@ -140,11 +153,13 @@ if __name__ == '__main__':
                            labels_considered]
     labels_train_selected = [labels_train[idx] for idx in range(len(labels_train)) if labels_train[idx] in
                              labels_considered]
+    if group_map:
+        labels_train_selected = [group_map[l] for l in labels_train_selected]
 
     file_train_selected_expanded, labels_train_selected_expanded, stream_ant_train = \
         expand_antennas(file_train_selected, labels_train_selected, num_antennas)
 
-    name_cache = cache_base + '_' + str(csi_act) + '_cache_train'
+    name_cache = cache_base + '_' + csi_act_out + '_cache_train'
     dataset_csi_train = create_dataset_single(file_train_selected_expanded, labels_train_selected_expanded,
                                               stream_ant_train, input_network, batch_size,
                                               shuffle=True, cache_file=name_cache)
@@ -153,11 +168,13 @@ if __name__ == '__main__':
                          labels_considered]
     labels_val_selected = [labels_val[idx] for idx in range(len(labels_val)) if labels_val[idx] in
                            labels_considered]
+    if group_map:
+        labels_val_selected = [group_map[l] for l in labels_val_selected]
 
     file_val_selected_expanded, labels_val_selected_expanded, stream_ant_val = \
         expand_antennas(file_val_selected, labels_val_selected, num_antennas)
 
-    name_cache_val = cache_base + '_' + str(csi_act) + '_cache_val'
+    name_cache_val = cache_base + '_' + csi_act_out + '_cache_val'
     dataset_csi_val = create_dataset_single(file_val_selected_expanded, labels_val_selected_expanded,
                                             stream_ant_val, input_network, batch_size,
                                             shuffle=False, cache_file=name_cache_val)
@@ -166,14 +183,21 @@ if __name__ == '__main__':
                           labels_considered]
     labels_test_selected = [labels_test[idx] for idx in range(len(labels_test)) if labels_test[idx] in
                             labels_considered]
+    if group_map:
+        labels_test_selected = [group_map[l] for l in labels_test_selected]
 
     file_test_selected_expanded, labels_test_selected_expanded, stream_ant_test = \
         expand_antennas(file_test_selected, labels_test_selected, num_antennas)
 
-    name_cache_test = cache_base + '_' + str(csi_act) + '_cache_test'
+    name_cache_test = cache_base + '_' + csi_act_out + '_cache_test'
     dataset_csi_test = create_dataset_single(file_test_selected_expanded, labels_test_selected_expanded,
                                              stream_ant_test, input_network, batch_size,
                                              shuffle=False, cache_file=name_cache_test)
+
+    if group_map:
+        output_shape = len(grouped_names)
+        labels_considered = np.arange(output_shape)
+        activities = np.asarray(grouped_names)
 
     num_samples_train = len(file_train_selected_expanded)
     num_samples_val = len(file_val_selected_expanded)
@@ -201,7 +225,7 @@ if __name__ == '__main__':
         test_prediction_list = sklearn_class_scores(clf, x_test_skl, output_shape)
 
         import joblib
-        joblib.dump(clf, name_base + '_' + str(csi_act) + '_' + args.model + '.joblib')
+        joblib.dump(clf, name_base + '_' + csi_act_out + '_' + args.model + '.joblib')
     else:
         csi_model = build_model(args.model, input_network, output_shape,
                                 dropout=args.dropout, filter_scale=args.filter_scale, **extra_hparams)
@@ -212,19 +236,36 @@ if __name__ == '__main__':
         csi_model.compile(optimizer=optimiz, loss=loss,
                           metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
-        callback_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
-        name_model = name_base + '_' + str(csi_act) + '_' + args.model + '_network.keras'
-        callback_save = tf.keras.callbacks.ModelCheckpoint(name_model, save_freq='epoch', save_best_only=True,
-                                                           monitor='val_sparse_categorical_accuracy')
+        callback_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5,
+                                                         min_delta=1e-3, restore_best_weights=True)
+        name_model = name_base + '_' + csi_act_out + '_' + args.model + '_network.keras'
+        # No ModelCheckpoint: restore_best_weights above already leaves the best epoch in
+        # memory, and csi_model.save() below persists it -- a best-only checkpoint would just
+        # be overwritten by that save, so it was redundant.
 
-        history = csi_model.fit(dataset_csi_train, epochs=25, steps_per_epoch=train_steps_per_epoch,
+        # One clean line per epoch (with a completion bar) instead of Keras' per-batch
+        # progress bar, which floods the run log with hundreds of step-count updates.
+        def _epoch_line(epoch, logs):
+            logs = logs or {}
+            done, total = epoch + 1, args.epochs
+            filled = int(round(20 * done / total))
+            bar = '#' * filled + '-' * (20 - filled)
+            msg = 'epoch %2d/%d [%s] loss %.4f val_loss %.4f' % (
+                done, total, bar, logs.get('loss', float('nan')), logs.get('val_loss', float('nan')))
+            acc = logs.get('sparse_categorical_accuracy')
+            if acc is not None:
+                msg += ' acc %.4f val_acc %.4f' % (acc, logs.get('val_sparse_categorical_accuracy', float('nan')))
+            print(msg, flush=True)
+        callback_epoch = tf.keras.callbacks.LambdaCallback(on_epoch_end=_epoch_line)
+
+        history = csi_model.fit(dataset_csi_train, epochs=args.epochs, steps_per_epoch=train_steps_per_epoch,
                                 validation_data=dataset_csi_val, validation_steps=val_steps_per_epoch,
-                                callbacks=[callback_save, callback_stop])
+                                callbacks=[callback_stop, callback_epoch], verbose=0)
         csi_model.save(name_model)
         csi_model = tf.keras.models.load_model(name_model)
 
         os.makedirs('./plots', exist_ok=True)
-        plot_name = str(csi_act) + '_' + subdirs_training + '_' + args.model + '_band_' + \
+        plot_name = csi_act_out + '_' + subdirs_training + '_' + args.model + '_band_' + \
                    str(bandwidth) + '_subband_' + str(sub_band)
         plt_loss_curve(history.history, plot_name, model_name=args.model)
 
@@ -309,7 +350,7 @@ if __name__ == '__main__':
 
     os.makedirs('./outputs', exist_ok=True)
     # .for_machine.pkl: binary pickle for CSI_network_metrics(_plot).py, not human-readable
-    name_file = './outputs/test_' + str(csi_act) + '_' + subdirs_training + '_' + args.model + '_band_' + \
+    name_file = './outputs/test_' + csi_act_out + '_' + subdirs_training + '_' + args.model + '_band_' + \
                 str(bandwidth) + '_subband_' + str(sub_band) + '.for_machine.pkl'
     with open(name_file, "wb") as fp:  # Pickling
         pickle.dump(metrics_matrix_dict, fp)
@@ -352,7 +393,7 @@ if __name__ == '__main__':
                 pred_max_merge[i_lab] = lab_max_merge
 
             _, _, fscore_max_merge, _ = precision_recall_fscore_support(labels_true_merge, pred_max_merge,
-                                                                        labels=[0, 1, 2, 3, 4])
+                                                                        labels=list(labels_considered))
             accuracy_max_merge = accuracy_score(labels_true_merge, pred_max_merge)
 
             average_accuracy_change_num_ant[ant_n] += accuracy_max_merge
@@ -364,7 +405,7 @@ if __name__ == '__main__':
     metrics_matrix_dict = {'average_accuracy_change_num_ant': average_accuracy_change_num_ant,
                            'average_fscore_change_num_ant': average_fscore_change_num_ant}
 
-    name_file = './outputs/change_number_antennas_test_' + str(csi_act) + '_' + subdirs_training + '_' + \
+    name_file = './outputs/change_number_antennas_test_' + csi_act_out + '_' + subdirs_training + '_' + \
                 args.model + '_band_' + str(bandwidth) + '_subband_' + str(sub_band) + '.for_machine.pkl'
     with open(name_file, "wb") as fp:  # Pickling
         pickle.dump(metrics_matrix_dict, fp)

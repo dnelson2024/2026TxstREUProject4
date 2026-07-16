@@ -1,2 +1,16 @@
 cache/
 reports/
+__pycache__/
+Widar3.0/data/
+Widar3.0/results/
+plots/results/
+Widar3.0/data/
+Widar3.0/results/
+plots/
+outputs/
+SHARP-outputs/
+SHARP-plots/
+*_epochs/
+.~lock.*
+__pycache__/
+*.pyc

@@ -223,16 +223,53 @@ def build_widar3(input_sh, output_sh, frame_len=10, conv_filters=16, kernel_size
     return tf.keras.Model(x_in, x, name='widar3')
 
 
+def _res_block(x, filters, stride=1):
+    shortcut = x
+    y = tf.keras.layers.Conv2D(filters, 3, strides=stride, padding='same', use_bias=False)(x)
+    y = tf.keras.layers.BatchNormalization()(y)
+    y = tf.keras.layers.ReLU()(y)
+    y = tf.keras.layers.Conv2D(filters, 3, padding='same', use_bias=False)(y)
+    y = tf.keras.layers.BatchNormalization()(y)
+    if stride != 1 or shortcut.shape[-1] != filters:
+        shortcut = tf.keras.layers.Conv2D(filters, 1, strides=stride, use_bias=False)(x)
+        shortcut = tf.keras.layers.BatchNormalization()(shortcut)
+    return tf.keras.layers.ReLU()(tf.keras.layers.Add()([y, shortcut]))
+
+
+def build_resnet18(input_sh, output_sh, dropout=0.3, base_filters=64):
+    # Standard ResNet-18 (4 stages x 2 basic blocks) on the Doppler spectrogram.
+    x_in = tf.keras.Input(input_sh)
+    x = tf.keras.layers.Conv2D(base_filters, 7, strides=2, padding='same', use_bias=False)(x_in)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU()(x)
+    x = tf.keras.layers.MaxPooling2D(3, strides=2, padding='same')(x)
+    for stage, filters in enumerate([base_filters, base_filters * 2,
+                                     base_filters * 4, base_filters * 8]):
+        for block in range(2):
+            x = _res_block(x, filters, stride=2 if (stage > 0 and block == 0) else 1)
+    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    x = tf.keras.layers.Dropout(dropout)(x)
+    x = tf.keras.layers.Dense(output_sh, activation=None)(x)
+    return tf.keras.Model(x_in, x, name='resnet18')
+
+
 # Keras builders keyed by --model value. 'random_forest' is handled separately
 # in CSI_network.py (sklearn, not a Keras model).
+# 'cnn_tuned'/'widar3_tuned' are the SAME architectures as 'cnn'/'widar3' under a
+# separate name: 'cnn' stays locked to the original SHARP hyperparameters, while
+# cnn_tuned accepts --hparams (dropout/filter_scale) freely; the *_tuned names also
+# keep their trained checkpoints/outputs separate from the baseline versions.
 KERAS_MODEL_BUILDERS = {
     'cnn': build_cnn,
+    'cnn_tuned': build_cnn,
     'cnn_bilstm': build_cnn_bilstm,
     'vit': build_vit,
     'bilstm': build_bilstm,
     'lstm': build_lstm,
     'rcnn': build_rcnn,
     'widar3': build_widar3,
+    'widar3_tuned': build_widar3,
+    'resnet18': build_resnet18,
 }
 
 
@@ -245,12 +282,17 @@ def build_model(model_name, input_sh, output_sh, dropout=None, filter_scale=1.0,
     if model_name == 'cnn' and hparams:
         raise ValueError('The cnn architecture is locked to the original SHARP design; '
                          '--hparams is not supported for it (got %r)' % sorted(hparams))
+    # widar3 is likewise locked to the original Widar3.0 settings (frame_len 10,
+    # 16@5x5 conv, dense 64, GRU 128, dropout 0.5); use widar3_tuned to vary them.
+    if model_name == 'widar3' and (hparams or dropout is not None):
+        raise ValueError('widar3 is locked to the original Widar3.0 configuration; '
+                         'use --model widar3_tuned to change dropout/hparams')
     # dropout=None keeps each builder's own default (0.2 for cnn, 0.3 for the rest);
     # filter_scale only exists for the cnn architecture.
     kwargs = dict(hparams)
     if dropout is not None:
         kwargs['dropout'] = dropout
-    if model_name == 'cnn':
+    if model_name in ('cnn', 'cnn_tuned'):
         kwargs['filter_scale'] = filter_scale
     return KERAS_MODEL_BUILDERS[model_name](input_sh, output_sh, **kwargs)
 
